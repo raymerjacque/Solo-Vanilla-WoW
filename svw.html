@@ -536,13 +536,10 @@
         const saved = localStorage.getItem('svw_api_host');
         if (saved && saved.trim()) return saved.trim().replace(/\/+$/, '');
         
-        if (window.location.port === '8080') {
+        if (window.location.hostname && window.location.hostname !== '') {
             return '';
         }
-        if (window.location.hostname && window.location.hostname !== '') {
-            return `http://${window.location.hostname}:8080`;
-        }
-        return 'http://localhost:8080';
+        return 'https://makululinux.us';
     }
 
     function apiUrl(path) {
