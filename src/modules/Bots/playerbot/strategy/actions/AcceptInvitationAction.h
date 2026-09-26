@@ -38,13 +38,10 @@ namespace ai
             p << roles_mask;
             bot->GetSession()->HandleGroupAcceptOpcode(p);
 
-            if (sRandomPlayerbotMgr.IsRandomBot(bot))
-            {
-                bot->GetPlayerbotAI()->SetMaster(inviter);
-            }
+            bot->GetPlayerbotAI()->SetMaster(inviter);
 
             ai->ResetStrategies();
-            ai->TellMaster("Hello");
+            ai->TellMaster("Hello! Ready to follow your lead.");
             return true;
         }
     };

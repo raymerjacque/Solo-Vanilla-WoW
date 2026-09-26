@@ -111,13 +111,10 @@ namespace ai
             AiObjectContextInternal()
             {
                 creators["summon imp"] = &AiObjectContextInternal::summon_imp;
-                creators["demon armor"] = &AiObjectContextInternal::demon_armor;
-                creators["demon skin"] = &AiObjectContextInternal::demon_skin;
-                creators["create healthstone"] = &AiObjectContextInternal::create_healthstone;
-                creators["create firestone"] = &AiObjectContextInternal::create_firestone;
-                creators["create spellstone"] = &AiObjectContextInternal::create_spellstone;
-                creators["spellstone"] = &AiObjectContextInternal::spellstone;
                 creators["summon voidwalker"] = &AiObjectContextInternal::summon_voidwalker;
+                creators["summon succubus"] = &AiObjectContextInternal::summon_succubus;
+                creators["summon felhunter"] = &AiObjectContextInternal::summon_felhunter;
+                creators["summon infernal"] = &AiObjectContextInternal::summon_infernal;
                 creators["immolate"] = &AiObjectContextInternal::immolate;
                 creators["corruption"] = &AiObjectContextInternal::corruption;
                 creators["corruption on attacker"] = &AiObjectContextInternal::corruption_on_attacker;
@@ -147,6 +144,9 @@ namespace ai
             static Action* create_spellstone(PlayerbotAI* ai) { return new CastCreateSpellstoneAction(ai); }
             static Action* spellstone(PlayerbotAI* ai) { return new UseSpellItemAction(ai, "spellstone", true); }
             static Action* summon_voidwalker(PlayerbotAI* ai) { return new CastSummonVoidwalkerAction(ai); }
+            static Action* summon_succubus(PlayerbotAI* ai) { return new CastSummonSuccubusAction(ai); }
+            static Action* summon_felhunter(PlayerbotAI* ai) { return new CastSummonFelhunterAction(ai); }
+            static Action* summon_infernal(PlayerbotAI* ai) { return new CastSummonInfernalAction(ai); }
             static Action* corruption(PlayerbotAI* ai) { return new CastCorruptionAction(ai); }
             static Action* corruption_on_attacker(PlayerbotAI* ai) { return new CastCorruptionOnAttackerAction(ai); }
             static Action* curse_of_agony(PlayerbotAI* ai) { return new CastCurseOfAgonyAction(ai); }

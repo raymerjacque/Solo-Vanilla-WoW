@@ -16,25 +16,41 @@ bool BuyAction::Execute(Event event)
         return false;
     }
 
+    ObjectGuid vendorguid;
     Player* master = GetMaster();
-
-    if (!master)
+    if (master && master->GetSelectionGuid())
     {
-        return false;
+        vendorguid = master->GetSelectionGuid();
+    }
+    else
+    {
+        list<ObjectGuid> npcs = AI_VALUE(list<ObjectGuid>, "nearest npcs");
+        for (list<ObjectGuid>::iterator i = npcs.begin(); i != npcs.end(); i++)
+        {
+            Creature* unit = bot->GetNPCIfCanInteractWith(*i, UNIT_NPC_FLAG_VENDOR);
+            if (unit)
+            {
+                vendorguid = unit->GetObjectGuid();
+                break;
+            }
+        }
     }
 
-    ObjectGuid vendorguid = master->GetSelectionGuid();
     if (!vendorguid)
     {
+        if (master)
+            ai->TellMaster("Select a vendor first");
         return false;
     }
 
-    Creature *pCreature = bot->GetNPCIfCanInteractWith(vendorguid,UNIT_NPC_FLAG_VENDOR);
+    Creature *pCreature = bot->GetNPCIfCanInteractWith(vendorguid, UNIT_NPC_FLAG_VENDOR);
     if (!pCreature)
     {
-        ai->TellMaster("Cannot talk to vendor");
+        if (master)
+            ai->TellMaster("Cannot talk to vendor");
         return false;
     }
+
 
     VendorItemData const* tItems = pCreature->GetVendorItems();
     if (!tItems)

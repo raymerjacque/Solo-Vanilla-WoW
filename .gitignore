@@ -126,3 +126,14 @@ msbuild.cmd
 
 # File generated during compile
 /dep/libmpq/compile
+
+# Ignore extracted resources, maps, vmaps, mmaps, client data & active config files
+/data/
+/maps/
+/vmaps/
+/mmaps/
+/dbc/
+*.conf
+*.rar
+*.mpq
+

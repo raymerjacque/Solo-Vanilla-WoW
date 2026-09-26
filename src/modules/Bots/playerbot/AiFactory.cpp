@@ -234,12 +234,32 @@ void AiFactory::AddDefaultCombatStrategies(Player* player, PlayerbotAI* const fa
             }
 
             engine->addStrategy("flee");
+            engine->addStrategy("potions");
             break;
+
     }
 
     if (sRandomPlayerbotMgr.IsRandomBot(player) && !player->GetGroup())
     {
         engine->ChangeStrategy(sPlayerbotAIConfig.randomBotCombatStrategies);
+    }
+
+    if (facade->GetMaster())
+    {
+        engine->addStrategy("follow master");
+        if (facade->IsTank(player))
+        {
+            engine->addStrategy("tank assist");
+        }
+        else
+        {
+            engine->addStrategy("dps assist");
+        }
+
+        if (facade->IsHeal(player) || player->getClass() == CLASS_PRIEST || player->getClass() == CLASS_PALADIN || player->getClass() == CLASS_DRUID || player->getClass() == CLASS_SHAMAN)
+        {
+            engine->addStrategy("heal");
+        }
     }
 }
 
@@ -275,9 +295,35 @@ void AiFactory::AddDefaultNonCombatStrategies(Player* player, PlayerbotAI* const
 
     if (sRandomPlayerbotMgr.IsRandomBot(player) && !player->GetGroup())
     {
+        nonCombatEngine->removeStrategy("stay");
         nonCombatEngine->ChangeStrategy(sPlayerbotAIConfig.randomBotNonCombatStrategies);
     }
 
+    if (facade->GetMaster())
+    {
+        nonCombatEngine->removeStrategy("stay");
+        nonCombatEngine->removeStrategy("grind");
+        nonCombatEngine->removeStrategy("move random");
+        nonCombatEngine->addStrategy("follow master");
+
+        switch (player->getClass())
+        {
+            case CLASS_PRIEST:
+            case CLASS_PALADIN:
+            case CLASS_DRUID:
+            case CLASS_SHAMAN:
+                nonCombatEngine->addStrategy("bmana");
+                nonCombatEngine->addStrategy("bdps");
+                nonCombatEngine->addStrategy("barmor");
+                break;
+            case CLASS_MAGE:
+                nonCombatEngine->addStrategy("bmana");
+                break;
+            case CLASS_WARLOCK:
+                nonCombatEngine->addStrategy("bdps");
+                break;
+        }
+    }
 }
 
 Engine* AiFactory::createNonCombatEngine(Player* player, PlayerbotAI* const facade, AiObjectContext* AiObjectContext) {

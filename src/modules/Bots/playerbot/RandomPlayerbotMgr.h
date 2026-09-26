@@ -55,6 +55,13 @@ class MANGOS_DLL_SPEC RandomPlayerbotMgr : public PlayerbotHolder
         void RandomTeleportForLevel(Player* bot);
         void RandomTeleport(Player* bot, vector<WorldLocation> &locs);
         uint32 GetZoneLevel(uint32 mapId, float teleX, float teleY, float teleZ);
+        void FormRandomGroups();
+        void TeleportBotsToPlayers();
+        void RelocateIdleBots();
+        void ProcessGuilds();
+        void FormRaidGroups();
+        void FormCityInvasionRaids();
+
 
     private:
         vector<Player*> players;

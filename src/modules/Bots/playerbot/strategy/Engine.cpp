@@ -509,6 +509,11 @@ bool Engine::ListenAndExecute(Action* action, Event event)
 
 void Engine::LogAction(const char* format, ...)
 {
+    if (!testMode && !sPlayerbotAIConfig.logValuesPerTick)
+    {
+        return;
+    }
+
     char buf[1024];
 
     va_list ap;
@@ -527,12 +532,12 @@ void Engine::LogAction(const char* format, ...)
     else
     {
         Player* bot = ai->GetBot();
-        if (sPlayerbotAIConfig.logInGroupOnly && !bot->GetGroup())
+        if (sPlayerbotAIConfig.logInGroupOnly && bot && !bot->GetGroup())
         {
             return;
         }
 
-        sLog.outDebug("%s %s", bot->GetName(), buf);
+        sLog.outDebug("%s %s", bot ? bot->GetName() : "bot", buf);
     }
 }
 

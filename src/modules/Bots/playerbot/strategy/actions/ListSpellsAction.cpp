@@ -8,7 +8,7 @@ using namespace ai;
 bool ListSpellsAction::Execute(Event event)
 {
     Player* master = GetMaster();
-    if (!master)
+    if (!master || !master->GetSession())
     {
         return false;
     }

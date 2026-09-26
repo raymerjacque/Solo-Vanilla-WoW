@@ -24,6 +24,19 @@
 #include "EquipAction.h"
 #include "TradeAction.h"
 #include "ChangeTalentsAction.h"
+#include "AutoAuctionAction.h"
+#include "AutoAuctionBuyAction.h"
+#include "AmbientEmoteAction.h"
+#include "BGQueueAction.h"
+#include "BGTacticsAction.h"
+#include "DungeonTacticsAction.h"
+#include "ClassEpicQuestAction.h"
+#include "OutdoorPvPAction.h"
+#include "WorldEventsAction.h"
+#include "ProfessionServiceAction.h"
+#include "EliteQuestGroupAction.h"
+#include "AutoQuestAction.h"
+#include "EscortAction.h"
 #include "ListSpellsAction.h"
 #include "ChangeStrategyAction.h"
 #include "TrainerAction.h"
@@ -80,6 +93,19 @@ namespace ai
             creators["reward"] = &ChatActionContext::reward;
             creators["trade"] = &ChatActionContext::trade;
             creators["talents"] = &ChatActionContext::talents;
+            creators["auto auction"] = &ChatActionContext::auto_auction;
+            creators["auto auction buy"] = &ChatActionContext::auto_auction_buy;
+            creators["ambient emote"] = &ChatActionContext::ambient_emote;
+            creators["bg queue"] = &ChatActionContext::bg_queue;
+            creators["bg tactics"] = &ChatActionContext::bg_tactics;
+            creators["dungeon tactics"] = &ChatActionContext::dungeon_tactics;
+            creators["class epic quest"] = &ChatActionContext::class_epic_quest;
+            creators["outdoor pvp"] = &ChatActionContext::outdoor_pvp;
+            creators["world events"] = &ChatActionContext::world_events;
+            creators["profession service"] = &ChatActionContext::profession_service;
+            creators["elite quest group"] = &ChatActionContext::elite_quest_group;
+            creators["auto quest"] = &ChatActionContext::auto_quest;
+            creators["escort"] = &ChatActionContext::escort;
             creators["spells"] = &ChatActionContext::spells;
             creators["co"] = &ChatActionContext::co;
             creators["nc"] = &ChatActionContext::nc;
@@ -146,6 +172,19 @@ namespace ai
         static Action* dead(PlayerbotAI* ai) { return new ChangeDeadStrategyAction(ai); }
         static Action* spells(PlayerbotAI* ai) { return new ListSpellsAction(ai); }
         static Action* talents(PlayerbotAI* ai) { return new ChangeTalentsAction(ai); }
+        static Action* auto_auction(PlayerbotAI* ai) { return new AutoAuctionAction(ai); }
+        static Action* auto_auction_buy(PlayerbotAI* ai) { return new AutoAuctionBuyAction(ai); }
+        static Action* ambient_emote(PlayerbotAI* ai) { return new AmbientEmoteAction(ai); }
+        static Action* bg_queue(PlayerbotAI* ai) { return new BGQueueAction(ai); }
+        static Action* bg_tactics(PlayerbotAI* ai) { return new BGTacticsAction(ai); }
+        static Action* dungeon_tactics(PlayerbotAI* ai) { return new DungeonTacticsAction(ai); }
+        static Action* class_epic_quest(PlayerbotAI* ai) { return new ClassEpicQuestAction(ai); }
+        static Action* outdoor_pvp(PlayerbotAI* ai) { return new OutdoorPvPAction(ai); }
+        static Action* world_events(PlayerbotAI* ai) { return new WorldEventsAction(ai); }
+        static Action* profession_service(PlayerbotAI* ai) { return new ProfessionServiceAction(ai); }
+        static Action* elite_quest_group(PlayerbotAI* ai) { return new EliteQuestGroupAction(ai); }
+        static Action* auto_quest(PlayerbotAI* ai) { return new AutoQuestAction(ai); }
+        static Action* escort(PlayerbotAI* ai) { return new EscortAction(ai); }
 
         static Action* equip(PlayerbotAI* ai) { return new EquipAction(ai); }
         static Action* unequip(PlayerbotAI* ai) { return new UnequipAction(ai); }

@@ -11091,7 +11091,8 @@ void Unit::UpdateSplineMovement(uint32 t_diff)
 
         if (GetTypeId() == TYPEID_PLAYER)
         {
-            ((Player*)this)->SetPosition(loc.x, loc.y, loc.z, loc.orientation);
+            GetMap()->PlayerRelocation((Player*)this, loc.x, loc.y, loc.z, loc.orientation);
+            SendHeartBeat();
         }
         else
         {

@@ -77,6 +77,24 @@ namespace ai
         CastSummonImpAction(PlayerbotAI* ai) : CastBuffSpellAction(ai, "summon imp") {}
     };
 
+    class CastSummonSuccubusAction : public CastBuffSpellAction
+    {
+    public:
+        CastSummonSuccubusAction(PlayerbotAI* ai) : CastBuffSpellAction(ai, "summon succubus") {}
+    };
+
+    class CastSummonFelhunterAction : public CastBuffSpellAction
+    {
+    public:
+        CastSummonFelhunterAction(PlayerbotAI* ai) : CastBuffSpellAction(ai, "summon felhunter") {}
+    };
+
+    class CastSummonInfernalAction : public CastBuffSpellAction
+    {
+    public:
+        CastSummonInfernalAction(PlayerbotAI* ai) : CastBuffSpellAction(ai, "summon infernal") {}
+    };
+
     class CastCreateHealthstoneAction : public CastBuffSpellAction
     {
     public:

@@ -72,6 +72,7 @@ target_link_libraries(mangosd
         $<$<BOOL:${SOAP}>:gsoap>
         Threads::Threads
         ${OPENSSL_LIBRARIES}
+        curl
 )
 
 install(

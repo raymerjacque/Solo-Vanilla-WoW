@@ -1,0 +1,144 @@
+===============================================================================
+               MANGOS ZERO - PLAYERBOT & SERVER MASTER ROADMAP
+===============================================================================
+
+-------------------------------------------------------------------------------
+[COMPLETED PHASES & SYSTEMS]
+-------------------------------------------------------------------------------
+
+[x] PHASE 1: FOUNDATION MOVEMENT & SERVER SYNC FIXES
+    [x] Fix 'stay' strategy conflict clearing bot movement generator in AiFactory.cpp.
+    [x] Add player map relocation & MSG_MOVE_HEARTBEAT packet broadcasts in Unit.cpp.
+    [x] Improve MoveRandomAction vector angle/distance logic for active roaming.
+    [x] Expand perception/reaction radii (SightDistance, GrindDistance, ReactDistance).
+
+[x] PHASE 2: BOT-TO-BOT GROUPING & AUTONOMOUS DUNGEON RUN ENGINE
+    [x] Autonomous Bot Grouping: Random bots search for same-level bots nearby and form parties (FormRandomGroups()).
+    [x] Dungeon Party Formation Engine: Random bots auto-match into 5-man parties (1 Tank, 1 Healer, 3 DPS) and teleport to dungeon entrances.
+    [x] Autonomous Dungeon Pathing & Execution: Bot groups navigate to dungeon entrances and clear dungeons without human intervention.
+    [x] Group Combat Roles: Tanks hold aggro/taunt, Healers target low HP party members, DPS focus tank's target.
+
+[x] PHASE 3: AUTONOMOUS ECONOMY, AUCTION HOUSE & ITEM MANAGEMENT
+    [x] Vendor Selling & Repairing: Auto-path to vendors to sell junk/gray items and repair gear when inventory is full or durability is low.
+    [x] Auction House Trading: Bots list valuable loot/materials on AH when visiting capital cities.
+    [x] Auto-Equip & Gear Evaluation: Automatic gear scoring to equip item upgrades from loot, vendors, or AH.
+
+[x] PHASE 4: ADVANCED QUESTING, PATHFINDING & ESCORTS
+    [x] Quest Objective DB Navigation: Spot nearby questgivers, auto-path to them, accept available quests (!), and turn in completed quests (?).
+    [x] Escort NPC Support: Detect active escort NPCs, form bodyguard formations, and defend escort targets along their path.
+    [x] Level-Appropriate Zone Teleportation: Teleport bots to level-matching zones (e.g. Level 60s to Plaguelands/Winterspring instead of Elwynn).
+    [x] Player Proximity & Playmate Clustering AI: Automatically cluster same-faction, similar-level bots near online human players (TeleportBotsToPlayers()).
+    [x] Idle Bot & City Relocation: Relocate bots standing idle in cities or level-mismatched zones to active adventuring areas (RelocateIdleBots()).
+    [x] Bot Population & Gradual Spawning: Increased total bot pool to 200 with gradual spawn rates (2–5 bots per tick) and even 1–60 level distribution across level-appropriate zones.
+
+[x] PHASE 5: CLASS COMBAT ROTATIONS, TALENTS & CONSUMABLES
+    [x] Auto-Talent Allocation: Automatically assign talent points based on class spec as bots level up.
+    [x] Consumable AI: Use health/mana potions, food/drink, elixirs, scrolls, and rogue poisons.
+    [x] Enhanced Combat Rotations: Overhauled spell casting (stop-movement on cast) & disabled forced melee auto-attack for pure casters (Mage/Priest/Warlock).
+
+[x] PHASE 6: SOCIAL INTERACTION & WORLD PRESENCE
+    [x] Guild System: Bots autonomously found faction-themed guilds, invite un-guilded bots/players, and manage guild membership.
+    [x] Emotes & Ambient Chatter: Emote at players/mobs (/salute, /wave, /cheer, /dance, /bow) and congratulate nearby players on level-ups.
+    [x] Open World PvP & Battlegrounds: Autonomous BG queuing (WSG, AB, AV), auto-accepting BG port invites, and open-world skirmishes.
+
+[x] PHASE 7: 40-MAN RAIDING & WORLD BOSS ENGINE
+    [x] 40-Man Raid Party Formation: Level 60 bots form 40-man raid groups (Tanks, Healers, Melee/Ranged DPS) for Molten Core & Onyxia.
+    [x] Raid Instance Teleportation & Entrance: Raid groups assemble and enter Molten Core, Onyxia's Lair, and Blackwing Lair.
+    [x] Raid Decurse, Dispel & Aggro AI: Dedicated decursing (Mages/Druids), dispelling (Priests/Paladins), and main tank taunt rotations.
+
+[x] PHASE 8: AUCTION HOUSE BUYING ENGINE & PLAYER ECONOMY INTEGRATION
+    [x] AH Buying Engine: Bots search the Auction House for gear upgrades, trade materials, and consumables and place bids/buyouts.
+    [x] Player Listing Purchases: Bots automatically buy player-listed items on the AH if priced reasonably, creating an active economy.
+
+[x] PHASE 9: FACTION CITY INVASIONS & OPEN-WORLD WARFARE
+    [x] City Raid Assaults: Level 60 bot raids organize faction invasions against enemy capital cities (Stormwind / Orgrimmar / Undercity / Ironforge / Thunder Bluff / Darnassus).
+    [x] City Defense Formations & World Broadcasts: Defender bots mobilize to protect racial leaders and capital gates with global raid announcements.
+
+[x] PHASE 10: EXPANDED CHATBOT & NATURAL DIALOGUE ENGINE
+    [x] Interactive Whispers & Advice: Bots answer player queries about zone recommendations, dungeon strategies, AH economy, guild invites, and casual chat.
+
+[x] PHASE 11: PLAYER PARTY COMPANION & AUTO-FOLLOW / ASSIST ENGINE
+    [x] Auto-Accept & Master Set: When a player invites any bot, the bot auto-accepts and sets the player as master leader.
+    [x] Squad Formation Auto-Follow: Invited bots automatically follow behind the player in formation in non-combat & combat.
+    [x] Target Assist & Combat Roles: Tank bots taunt the player's target, DPS bots assist damage on player's target.
+    [x] Support Class Healing & Buffing: Healer/Support bots maintain party health, dispel debuffs, and keep Class Buffs active on the player.
+
+[x] PHASE 12: AUTOMATIC SPELLS, PETS & GROUP TELEPORT TETHERING
+    [x] Auto Spell & Pet Unlocking: Bots automatically unlock all class spells, pet summons (Imp, Voidwalker, Succubus, Felhunter, Hunter pets), mounts, and skills upon leveling up without visiting trainers.
+    [x] Automatic Talent Point Allocation: Talents are automatically assigned to matching class specs as bots level up.
+    [x] Instance & Flightpath Group Teleport Tethering: Grouped bots automatically teleport to the player when entering/exiting dungeon instances, taking flightpath taxis, or exceeding tether radius (> 75 yards).
+
+[x] PHASE 13: BOT UNINVITE/PARTY RESUME & AUTO-ACCOUNT CREATION
+    [x] Bot Uninvite / Party Disband Resume: When a player uninvites a playerbot or leaves the party, the bot immediately clears its master reference (SetMaster(NULL)), clears motion master, and resets strategies to default autonomous roaming/grinding/questing.
+    [x] Auto-Account Creation on First Login: When logging in with a non-existent username/password, realmd automatically creates the account in the database on the fly without needing a separate registration tool.
+
+[x] PHASE 14: EXTERNAL LLM AI CHATBOT ENGINE
+    [x] Asynchronous OpenAI-compatible API Integration: Integrated libcurl + std::thread to talk to https://api.makululinux.us/v1/chat/completions (model: electra-nano) asynchronously without blocking the game server loop.
+    [x] Rich In-Game Context System Prompt: Dynamic system prompt supplying bot name, class, race, level, faction, zone/location, guild, group/master status, current target, active quest list, and player info.
+    [x] Per-Bot Conversation History & Thinking Tag Sanitization: Maintains rolling chat history per bot/player pair and automatically strips internal thinking tags (<think>...</think>).
+
+[x] PHASE 15: HUMAN-LIKE PARTY SYNERGY & GROUP TACTICS
+    [x] Target Marking: Leader/Tank bots automatically assign raid target icons (Skull on primary target, Cross on secondary) during pulls.
+    [x] OOM Chat & Drinking Breaks: Bots announce in party chat when low on mana ("OOM! Resting a sec to drink."), sit to drink/eat, and pause pulling until mana recovers.
+    [x] Smart Loot Rolling & Trading: Bots roll Need on stat/class gear upgrades and Greed on all other loot instead of passing.
+    [x] Emergency Saves: Paladins cast Lay on Hands (<15% HP), Priests cast Power Word: Shield (<40% HP), Warriors Taunt off squishies.
+    [x] Mage Portals/Food & Warlock Summoning: Mages conjure food/water and cast city portals; Warlocks cast Ritual of Summoning upon whisper request.
+
+[x] PHASE 16: DYNAMIC BOT POPULATION & CRASH-SAFE SCALING
+    [x] 0-Player Idle Scaling: 0 bots online when no human players are logged in, preserving server CPU/RAM.
+    [x] 50-Bot Initial Scaling: 50 bots total (10 local + 40 global world) spawn on 1st player login.
+    [x] +10 Bots Per Additional Player: +10 bots per extra player up to 300 max cap.
+    [x] Batched Logins (Crash Prevention): 10 logins per tick with 1-second interval to prevent single-tick heap corruption.
+    [x] Party Bot Auto-Login: Automatically logs offline party bots back into game on player login and protects grouped bots from pruning.
+
+[x] PHASE 17: CORPSE REPOP & DEPLOYMENT STABILITY FIXES
+    [x] Corpse Repop Crash Prevention: Clean up stale corpses in Player::BuildPlayerRepop() to prevent assertion crashes.
+
+[x] PHASE 18: VANILLA HONOR SYSTEM & PVP RANKING ENGINE
+    [x] Honor & HK Accumulation: Bots gain Honor Points and Honorable Kills in open world and battlegrounds.
+    [x] Dishonorable Kill Prevention: Bots avoid attacking civilian NPCs to prevent DKs.
+    [x] Weekly PvP Rank Calculations: Calculate weekly PvP ranks (Rank 1 Scout/Private to Rank 14 High Warlord / Grand Marshal).
+    [x] PvP Title & Gear Rewards: Bots automatically equip PvP titles and purchase Rank 14 Epic Weapons and Armor.
+
+[x] PHASE 19: OBJECTIVE-DRIVEN BATTLEGROUND TACTICS (WSG, AB, AV)
+    [x] Warsong Gulch Flag Tactics: Flag carrier defense, flag returners, and mid-field offensive support.
+    [x] Arathi Basin Node Control: Strategic node capturing (Stables, Gold Mine, Blacksmith, Lumber Mill, Farm) and defender rotations.
+    [x] Alterac Valley Campaign Engine: Capturing Graveyards, destroying Towers, defeating Lieutenants, and assaulting Drek'Thar / Vanndar Stormpike.
+
+[x] PHASE 20: ADVANCED DUNGEON BOSS SCRIPTING & MECHANICS
+    [x] Blackrock Depths & Lyceum: Torch lighting and Grim Guzzler tavern event coordination.
+    [x] Stratholme & Baron Rivendare Timer: 45-minute Baron speedrun tactics and slaughterhouse abominations management.
+    [x] Scholomance & Darkmaster Gandling: Door key management and room portal boss tactics.
+    [x] Upper Blackrock Spire (UBRS): Rend Blackhand arena waves and General Drakkisath kite pull setup.
+
+[x] PHASE 21: CLASS EPIC MOUNT & LEGENDARY QUESTLINE AUTOMATION
+    [x] Warlock Dreadsteed Quest Chain: Automated Dire Maul ritual summon and quest item gathering.
+    [x] Paladin Charger Quest Chain: Stratholme and Scholomance holy ritual completion.
+    [x] Hunter Rhok'delar Epic Bow Quest: Solo demon hunting tactics in Un'Goro, Burning Steppes, Winterspring, and Silithus.
+    [x] Priest Anathema/Benediction Quest: Balance of Light and Dark escort defense in Eastern Plaguelands.
+
+[x] PHASE 22: OUTDOOR PVP ZONES & FACTION BUFF CONTROL
+    [x] Eastern Plaguelands Towers: Capturing Crown Guard, Northpass, Eastwall, and Plaguewood towers for Lordaeron's Blessing.
+    [x] Silithus Silithyst Sand Gathering: Gathering Silithyst sand in the Crystal Vale for Cenarion Circle favor and faction buffs.
+
+[x] PHASE 23: WORLD EVENTS & SEASONAL CALENDAR PARTICIPATION
+    [x] Darkmoon Faire Event: Bots visit Elwynn Forest / Mulgore Darkmoon Faire for fortune teller buffs and ticket turn-ins.
+    [x] Gurubashi Arena Chest: Bots fight in the Stranglethorn Vale Arena for the 3-hour chest spawn.
+    [x] Stranglethorn Fishing Extravaganza: Bots participate in Sunday fishing contests along the coast of STV.
+
+[x] PHASE 24: PROFESSION CRAFTING & ENCHANTING SERVICE ENGINE
+    [x] Active Trade Skill Crafting: Bots craft Alchemy potions, Blacksmithing gear, Leatherworking armor, and Tailoring bags.
+    [x] Player & Party Enchanting: Enchanter bots offer weapon and armor enchants to party members upon request.
+    [x] Auction House Crafting Economy: Bots sell high-demand crafted consumables (Flasks, Free Action Potions) on the AH.
+
+[x] PHASE 25: ELITE & MULTI-PHASE ESCORT QUEST SYSTEM
+    [x] Multi-Phase Escort Scripting: Handling complex multi-step escort quests (e.g. Defias Traitor, Tooga, Sharpbeak).
+    [x] Open-World Elite Group Quests: Bots form open-world elite questing groups for Jin'tha'Alor, Stromgarde Keep, and Hinterlands.
+
+-------------------------------------------------------------------------------
+[UPCOMING & PLANNED FEATURE PHASES]
+-------------------------------------------------------------------------------
+
+(ALL 25 PHASES COMPLETED - 100% MASTER ROADMAP FULLY EXECUTED)
+
+===============================================================================

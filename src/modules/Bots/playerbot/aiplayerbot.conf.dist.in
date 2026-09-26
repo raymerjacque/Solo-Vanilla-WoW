@@ -162,3 +162,7 @@ AiPlayerbot.RandomBotTeleLevel = 3
 
 # Command server port, 0 - disabled
 #AiPlayerbot.CommandServerPort = 8888
+
+# External LLM Chatbot API Key
+AiPlayerbot.ApiKey = YOUR_API_KEY_HERE
+

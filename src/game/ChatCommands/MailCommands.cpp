@@ -341,7 +341,7 @@ bool ChatHandler::HandleSendMoneyCommand(char* args)
         return false;
     }
 
-    MailSender sender(MAIL_NORMAL, (uint32)0, MAIL_STATIONERY_GM);
+    MailSender sender(MAIL_NORMAL, m_session ? m_session->GetPlayer()->GetGUIDLow() : (uint32)0, MAIL_STATIONERY_GM);
 
     draft.SendMailTo(MailReceiver(receiver, receiver_guid), sender);
 

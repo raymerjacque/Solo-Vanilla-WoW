@@ -5,6 +5,7 @@
 #include "PlayerbotFactory.h"
 #include "AccountMgr.h"
 #include "RandomPlayerbotMgr.h"
+#include "AiChatService.h"
 
 
 class LoginQueryHolder;
@@ -350,7 +351,7 @@ list<string> PlayerbotHolder::HandlePlayerbotCommand(char* args, Player* master)
 
         ObjectGuid member = sObjectMgr.GetPlayerGuidByName(bot);
         bool result = false;
-        if (master && member != master->GetObjectGuid())
+        if (master && master->GetSession() && member != master->GetObjectGuid())
         {
             result = ProcessBotCommand(cmdStr, member, master->GetSession()->GetSecurity() >= SEC_GAMEMASTER, master->GetSession()->GetAccountId());
         }
@@ -394,6 +395,7 @@ PlayerbotMgr::~PlayerbotMgr()
 void PlayerbotMgr::UpdateAIInternal(uint32 elapsed)
 {
     SetNextCheckDelay(sPlayerbotAIConfig.reactDelay);
+    sAiChatService.Update();
 }
 
 void PlayerbotMgr::HandleCommand(uint32 type, const string& text)

@@ -3083,6 +3083,9 @@ void Player::RemoveMail(uint32 id)
 
 void Player::SendMailResult(uint32 mailId, MailResponseType mailAction, MailResponseResult mailError, uint32 equipError, uint32 item_guid, uint32 item_count)
 {
+    if (!GetSession())
+        return;
+
     WorldPacket data(SMSG_SEND_MAIL_RESULT, (4 + 4 + 4 + (mailError == MAIL_ERR_EQUIP_ERROR ? 4 : 0)));
     data << (uint32) mailId;
     data << (uint32) mailAction;
@@ -3096,6 +3099,9 @@ void Player::SendMailResult(uint32 mailId, MailResponseType mailAction, MailResp
 
 void Player::SendNewMail()
 {
+    if (!GetSession())
+        return;
+
     // deliver undelivered mail
     WorldPacket data(SMSG_RECEIVED_MAIL, 4);
     data << float(0);
@@ -4741,11 +4747,12 @@ void Player::BuildPlayerRepop()
     }
     CastSpell(this, 8326, true);                            // auras SPELL_AURA_GHOST, SPELL_AURA_INCREASE_SPEED(why?), SPELL_AURA_INCREASE_SWIM_SPEED(why?)
 
-    // the player can not have a corpse already, only bones which are not returned by GetCorpse
-    if (GetCorpse())
+    // the player can not have a corpse already, remove old corpse if it exists to prevent crash
+    if (Corpse* oldCorpse = GetCorpse())
     {
-        sLog.outError("BuildPlayerRepop: player %s(%d) already has a corpse", GetName(), GetGUIDLow());
-        MANGOS_ASSERT(false);
+        sLog.outError("BuildPlayerRepop: player %s(%d) already has a corpse, removing old corpse", GetName(), GetGUIDLow());
+        oldCorpse->DeleteFromDB();
+        GetMap()->Remove(oldCorpse, true);
     }
 
     // create a corpse and place it at the player's location

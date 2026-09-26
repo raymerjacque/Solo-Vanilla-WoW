@@ -43,14 +43,9 @@ public:
 bool SellAction::Execute(Event event)
 {
     Player* master = GetMaster();
-    if (!master)
-    {
-        return false;
-    }
-
     string text = event.getParam();
 
-    if (text == "gray" || text == "*")
+    if (text.empty() || text == "gray" || text == "*")
     {
         SellGrayItemsVisitor visitor(this);
         IterateItems(&visitor);
@@ -59,7 +54,7 @@ bool SellAction::Execute(Event event)
 
     ItemIds ids = chat->parseItems(text);
 
-    for (ItemIds::iterator i =ids.begin(); i != ids.end(); i++)
+    for (ItemIds::iterator i = ids.begin(); i != ids.end(); i++)
     {
         FindItemByIdVisitor visitor(*i);
         Sell(&visitor);
@@ -81,11 +76,33 @@ void SellAction::Sell(FindItemVisitor* visitor)
 
 void SellAction::Sell(Item* item)
 {
+    if (!item)
+        return;
+
+    ObjectGuid vendorguid;
     Player* master = GetMaster();
-    ObjectGuid vendorguid = master->GetSelectionGuid();
+    if (master && master->GetSelectionGuid())
+    {
+        vendorguid = master->GetSelectionGuid();
+    }
+    else
+    {
+        list<ObjectGuid> npcs = AI_VALUE(list<ObjectGuid>, "nearest npcs");
+        for (list<ObjectGuid>::iterator i = npcs.begin(); i != npcs.end(); i++)
+        {
+            Creature* unit = bot->GetNPCIfCanInteractWith(*i, UNIT_NPC_FLAG_VENDOR);
+            if (unit)
+            {
+                vendorguid = unit->GetObjectGuid();
+                break;
+            }
+        }
+    }
+
     if (!vendorguid)
     {
-        ai->TellMaster("Select a vendor first");
+        if (master)
+            ai->TellMaster("Select a vendor first");
         return;
     }
 
@@ -96,6 +113,8 @@ void SellAction::Sell(Item* item)
     p << vendorguid << itemguid << count;
     bot->GetSession()->HandleSellItemOpcode(p);
 
-    ostringstream out; out << chat->formatItem(item->GetProto()) << " sold";
+    ostringstream out;
+    out << chat->formatItem(item->GetProto()) << " sold";
     ai->TellMaster(out);
 }
+

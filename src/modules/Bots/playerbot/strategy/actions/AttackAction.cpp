@@ -102,9 +102,11 @@ bool AttackAction::Attack(Unit* target)
         }
     }
 
-    bot->Attack(target, true);
+    bool isCaster = (bot->getClass() == CLASS_MAGE || bot->getClass() == CLASS_PRIEST || bot->getClass() == CLASS_WARLOCK);
+    bot->Attack(target, !isCaster);
     ai->ChangeEngine(BOT_STATE_COMBAT);
     return true;
+
 }
 
 bool AttackDuelOpponentAction::isUseful()

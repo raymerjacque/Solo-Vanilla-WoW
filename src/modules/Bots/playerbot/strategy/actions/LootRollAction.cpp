@@ -24,7 +24,7 @@ bool LootRollAction::Execute(Event event)
         return false;
     }
 
-    RollVote vote = ROLL_PASS;
+    RollVote vote = ROLL_GREED;
 
     ItemPrototype const *proto = sItemStorage.LookupEntry<ItemPrototype>(guid.GetEntry());
     if(proto)
@@ -37,11 +37,19 @@ bool LootRollAction::Execute(Event event)
             {
                 vote = ROLL_NEED;
             }
+            else
+            {
+                vote = ROLL_GREED;
+            }
             break;
         default:
             if (IsLootAllowed(guid.GetEntry()))
             {
                 vote = ROLL_NEED;
+            }
+            else
+            {
+                vote = ROLL_GREED;
             }
             break;
         }

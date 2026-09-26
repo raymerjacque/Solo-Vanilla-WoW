@@ -99,7 +99,7 @@ bool UseMeetingStoneAction::Execute(Event event)
 bool SummonAction::Execute(Event event)
 {
     Player* master = GetMaster();
-    if (!master)
+    if (!master || !master->GetSession())
     {
         return false;
     }

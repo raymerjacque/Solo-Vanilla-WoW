@@ -9,10 +9,9 @@ namespace ai
     public:
         EquipAction(PlayerbotAI* ai) : InventoryAction(ai, "equip") {}
         virtual bool Execute(Event event);
-
-    private:
         void EquipItem(FindItemVisitor* visitor);
         void EquipItem(Item& item);
     };
+
 
 }

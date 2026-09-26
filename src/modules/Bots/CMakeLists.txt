@@ -78,6 +78,32 @@ set(BOT_SRCS
     playerbot/strategy/actions/ChangeStrategyAction.h
     playerbot/strategy/actions/ChangeTalentsAction.cpp
     playerbot/strategy/actions/ChangeTalentsAction.h
+    playerbot/strategy/actions/AutoAuctionAction.cpp
+    playerbot/strategy/actions/AutoAuctionAction.h
+    playerbot/strategy/actions/AutoAuctionBuyAction.cpp
+    playerbot/strategy/actions/AutoAuctionBuyAction.h
+    playerbot/strategy/actions/AmbientEmoteAction.cpp
+    playerbot/strategy/actions/AmbientEmoteAction.h
+    playerbot/strategy/actions/BGQueueAction.cpp
+    playerbot/strategy/actions/BGQueueAction.h
+    playerbot/strategy/actions/BGTacticsAction.cpp
+    playerbot/strategy/actions/BGTacticsAction.h
+    playerbot/strategy/actions/DungeonTacticsAction.cpp
+    playerbot/strategy/actions/DungeonTacticsAction.h
+    playerbot/strategy/actions/ClassEpicQuestAction.cpp
+    playerbot/strategy/actions/ClassEpicQuestAction.h
+    playerbot/strategy/actions/OutdoorPvPAction.cpp
+    playerbot/strategy/actions/OutdoorPvPAction.h
+    playerbot/strategy/actions/WorldEventsAction.cpp
+    playerbot/strategy/actions/WorldEventsAction.h
+    playerbot/strategy/actions/ProfessionServiceAction.cpp
+    playerbot/strategy/actions/ProfessionServiceAction.h
+    playerbot/strategy/actions/EliteQuestGroupAction.cpp
+    playerbot/strategy/actions/EliteQuestGroupAction.h
+    playerbot/strategy/actions/AutoQuestAction.cpp
+    playerbot/strategy/actions/AutoQuestAction.h
+    playerbot/strategy/actions/EscortAction.cpp
+    playerbot/strategy/actions/EscortAction.h
     playerbot/strategy/actions/ChatActionContext.h
     playerbot/strategy/actions/ChatShortcutActions.cpp
     playerbot/strategy/actions/ChatShortcutActions.h

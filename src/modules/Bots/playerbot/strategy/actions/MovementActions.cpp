@@ -356,11 +356,11 @@ bool MoveRandomAction::Execute(Event event)
 
     for (int i = 0; i < 10; ++i)
     {
-        float x = bot->GetPositionX();
-        float y = bot->GetPositionY();
+        float angle = (float)urand(0, 360) * M_PI / 180.0f;
+        float dist = 20.0f + urand(0, (uint32)distance);
+        float x = bot->GetPositionX() + cos(angle) * dist;
+        float y = bot->GetPositionY() + sin(angle) * dist;
         float z = bot->GetPositionZ();
-        x += urand(0, distance) - distance / 2;
-        y += urand(0, distance) - distance / 2;
         bot->UpdateGroundPositionZ(x, y, z);
 
         bool moved = MoveNear(bot->GetMapId(), x, y, z);

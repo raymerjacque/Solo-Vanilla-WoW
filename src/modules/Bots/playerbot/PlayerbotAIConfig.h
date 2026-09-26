@@ -51,6 +51,7 @@ public:
     float randomChangeMultiplier;
     uint32 specProbability[MAX_CLASSES][3];
     std::string commandPrefix;
+    std::string aiApiKey;
 
     uint32 iterationsPerTick;
 

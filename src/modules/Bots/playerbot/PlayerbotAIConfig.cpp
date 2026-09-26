@@ -75,6 +75,7 @@ bool PlayerbotAIConfig::Initialize()
     iterationsPerTick = config.GetIntDefault("AiPlayerbot.IterationsPerTick", 4);
 
     allowGuildBots = config.GetBoolDefault("AiPlayerbot.AllowGuildBots", true);
+    aiApiKey = config.GetStringDefault("AiPlayerbot.ApiKey", "YOUR_API_KEY_HERE");
 
     randomBotMapsAsString = config.GetStringDefault("AiPlayerbot.RandomBotMaps", "0,1,530,571");
     LoadList<vector<uint32> >(randomBotMapsAsString, randomBotMaps);

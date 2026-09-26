@@ -16,6 +16,7 @@
 #include "PlayerbotFactory.h"
 #include "PlayerbotSecurity.h"
 #include "Util.h"
+#include "AiChatService.h"
 
 using namespace ai;
 using namespace std;
@@ -159,8 +160,169 @@ void PlayerbotAI::UpdateAI(uint32 elapsed)
     PlayerbotAIBase::UpdateAI(elapsed);
 }
 
+void PlayerbotAI::CheckAutoLearn()
+{
+    if (!bot || !bot->IsInWorld() || !bot->GetSession())
+        return;
+
+    static map<uint32, uint32> lastCheckLevels;
+    uint32 botGuid = bot->GetGUIDLow();
+    uint32 currentLvl = bot->getLevel();
+
+    if (lastCheckLevels[botGuid] != currentLvl)
+    {
+        lastCheckLevels[botGuid] = currentLvl;
+        PlayerbotFactory factory(bot, currentLvl);
+        factory.AutoLearnAll();
+    }
+}
+
+void PlayerbotAI::CheckMasterTether()
+{
+    if (!bot || !bot->IsInWorld() || !bot->GetSession() || bot->IsBeingTeleported() || bot->IsTaxiFlying())
+        return;
+
+    Player* master = GetMaster();
+    if (!master || !master->IsInWorld() || !master->GetSession() || master->IsBeingTeleported())
+        return;
+
+    if (!bot->GetGroup() || !bot->GetGroup()->IsMember(master->GetObjectGuid()))
+        return;
+
+    bool mapMismatch = (bot->GetMapId() != master->GetMapId());
+    float dist = bot->GetDistance(master);
+    bool outOfRange = (!mapMismatch && dist > 75.0f);
+    bool masterFlying = master->IsTaxiFlying();
+
+    if (mapMismatch || outOfRange || masterFlying)
+    {
+        if (mapMismatch || masterFlying || !bot->IsInCombat() || dist > 120.0f)
+        {
+            float offsetX = ((rand() % 5) - 2) * 1.5f;
+            float offsetY = ((rand() % 5) - 2) * 1.5f;
+            bot->TeleportTo(master->GetMapId(), master->GetPositionX() + offsetX, master->GetPositionY() + offsetY, master->GetPositionZ(), master->GetOrientation());
+        }
+    }
+}
+
+void PlayerbotAI::CheckGroupSynergy()
+{
+    if (!bot || !bot->IsInWorld() || !bot->GetSession() || bot->IsBeingTeleported() || bot->IsTaxiFlying())
+        return;
+
+    Group* group = bot->GetGroup();
+    if (!group)
+        return;
+
+    // 1. Auto-Target Marking in Combat (Skull = 8, Cross = 7)
+    if (bot->IsInCombat() && (group->IsLeader(bot->GetObjectGuid()) || IsTank(bot)))
+    {
+        static map<uint32, uint32> rtiTimers;
+        if (++rtiTimers[bot->GetGUIDLow()] >= 10)
+        {
+            rtiTimers[bot->GetGUIDLow()] = 0;
+            Unit* mainTarget = GetAiObjectContext()->GetValue<Unit*>("current target")->Get();
+            if (mainTarget && mainTarget->IsAlive() && mainTarget->IsInCombat())
+            {
+                group->SetTargetIcon(8, mainTarget->GetObjectGuid());
+            }
+
+            Unit* secTarget = GetAiObjectContext()->GetValue<Unit*>("least hp target")->Get();
+            if (secTarget && secTarget != mainTarget && secTarget->IsAlive())
+            {
+                group->SetTargetIcon(7, secTarget->GetObjectGuid());
+            }
+        }
+    }
+
+    // 2. OOM Announcement & Resting
+    if (!bot->IsInCombat() && bot->GetPower(POWER_MANA) > 0)
+    {
+        uint32 curMana = bot->GetPower(POWER_MANA);
+        uint32 maxMana = bot->GetMaxPower(POWER_MANA);
+        if (maxMana > 0)
+        {
+            uint32 pct = (curMana * 100) / maxMana;
+            static map<uint32, bool> oomState;
+            uint32 guid = bot->GetGUIDLow();
+            if (pct < 25 && !oomState[guid])
+            {
+                oomState[guid] = true;
+                bot->Say("OOM! Resting a sec to drink.", LANG_UNIVERSAL);
+                bot->GetMotionMaster()->Clear();
+                bot->SetStandState(UNIT_STAND_STATE_SIT);
+            }
+            else if (pct > 75 && oomState[guid])
+            {
+                oomState[guid] = false;
+            }
+        }
+    }
+
+    // 3. Emergency Saves & Cooldowns
+    if (bot->IsInCombat())
+    {
+        if (bot->getClass() == CLASS_PALADIN && bot->HasSpell(633))
+        {
+            for (GroupReference* itr = group->GetFirstMember(); itr != NULL; itr = itr->next())
+            {
+                Player* member = itr->getSource();
+                if (member && member->IsAlive() && member->GetMaxHealth() > 0)
+                {
+                    float hpPct = (float)member->GetHealth() / (float)member->GetMaxHealth() * 100.0f;
+                    if (hpPct < 15.0f && bot->GetDistance(member) < 30.0f)
+                    {
+                        bot->CastSpell(member, 633, true);
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (bot->getClass() == CLASS_PRIEST && bot->HasSpell(17))
+        {
+            for (GroupReference* itr = group->GetFirstMember(); itr != NULL; itr = itr->next())
+            {
+                Player* member = itr->getSource();
+                if (member && member->IsAlive() && member->GetMaxHealth() > 0)
+                {
+                    float hpPct = (float)member->GetHealth() / (float)member->GetMaxHealth() * 100.0f;
+                    if (hpPct < 40.0f && !member->HasAura(17) && bot->GetDistance(member) < 30.0f)
+                    {
+                        bot->CastSpell(member, 17, true);
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (bot->getClass() == CLASS_WARRIOR && bot->HasSpell(355))
+        {
+            for (GroupReference* itr = group->GetFirstMember(); itr != NULL; itr = itr->next())
+            {
+                Player* member = itr->getSource();
+                if (member && member != bot && member->IsAlive())
+                {
+                    if (Unit* attacker = member->getVictim())
+                    {
+                        if (attacker->getVictim() == member && bot->GetDistance(attacker) < 10.0f)
+                        {
+                            bot->CastSpell(attacker, 355, true);
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 void PlayerbotAI::UpdateAIInternal(uint32 elapsed)
 {
+    CheckMasterTether();
+    CheckAutoLearn();
+    CheckGroupSynergy();
+
     ExternalEventHelper helper(aiObjectContext);
     while (!chatCommands.empty())
     {
@@ -169,9 +331,16 @@ void PlayerbotAI::UpdateAIInternal(uint32 elapsed)
         Player* owner = holder.GetOwner();
         if (!helper.ParseChatCommand(command, owner) && holder.GetType() == CHAT_MSG_WHISPER)
         {
-            ostringstream out; out << "Unknown command " << command;
-            TellMaster(out);
-            helper.ParseChatCommand("help");
+            if (owner && HandleNaturalLanguageQuery(command, owner))
+            {
+                // Unrecognized command was handled as natural conversational dialogue
+            }
+            else
+            {
+                ostringstream out; out << "Unknown command " << command;
+                TellMaster(out);
+                helper.ParseChatCommand("help");
+            }
         }
         chatCommands.pop();
     }
@@ -233,17 +402,31 @@ void PlayerbotAI::Reset()
 
 void PlayerbotAI::HandleCommand(uint32 type, const string& text, Player& fromPlayer)
 {
-    if (!GetSecurity()->CheckLevelFor(PLAYERBOT_SECURITY_INVITE, type != CHAT_MSG_WHISPER, &fromPlayer))
-    {
-        return;
-    }
-
     if (type == CHAT_MSG_ADDON)
     {
         return;
     }
 
     string filtered = text;
+
+    // Direct all whispers from real players to AI Chat Service / command handler
+    if (type == CHAT_MSG_WHISPER)
+    {
+        if (!sPlayerbotAIConfig.commandPrefix.empty() && filtered.find(sPlayerbotAIConfig.commandPrefix) == 0)
+        {
+            filtered = filtered.substr(sPlayerbotAIConfig.commandPrefix.size());
+        }
+
+        filtered = chatFilter.Filter(trim(filtered));
+        if (!filtered.empty())
+        {
+            sLog.outString("PlayerbotAI: Bot %s received whisper from %s: '%s'", bot->GetName(), fromPlayer.GetName(), filtered.c_str());
+            ChatCommandHolder cmd(filtered, &fromPlayer, type);
+            chatCommands.push(cmd);
+        }
+        return;
+    }
+
     if (!sPlayerbotAIConfig.commandPrefix.empty())
     {
         if (filtered.find(sPlayerbotAIConfig.commandPrefix) != 0)
@@ -260,7 +443,7 @@ void PlayerbotAI::HandleCommand(uint32 type, const string& text, Player& fromPla
         return;
     }
 
-    if (filtered.find("who") != 0 && !GetSecurity()->CheckLevelFor(PLAYERBOT_SECURITY_ALLOW_ALL, type != CHAT_MSG_WHISPER, &fromPlayer))
+    if (!GetSecurity()->CheckLevelFor(PLAYERBOT_SECURITY_TALK, true, &fromPlayer))
     {
         return;
     }
@@ -477,17 +660,31 @@ void PlayerbotAI::DoNextAction()
     }
 
     Group *group = bot->GetGroup();
+    if (master)
+    {
+        bool inSameGroup = group && group->IsMember(master->GetObjectGuid());
+        bool masterOnline = master->IsInWorld() && master->GetSession();
+        if (!inSameGroup || !masterOnline)
+        {
+            SetMaster(NULL);
+            bot->GetMotionMaster()->Clear();
+            ResetStrategies();
+            master = NULL;
+        }
+    }
+
     if (!master && group)
     {
         for (GroupReference *gref = group->GetFirstMember(); gref; gref = gref->next())
         {
             Player* member = gref->getSource();
             PlayerbotAI* ai = bot->GetPlayerbotAI();
-            if (member && member->IsInWorld() && !member->GetPlayerbotAI() && (!master || master->GetPlayerbotAI()))
+            if (member && member->IsInWorld() && !member->GetPlayerbotAI())
             {
                 ai->SetMaster(member);
                 ai->ResetStrategies();
                 ai->TellMaster("Hello");
+                master = member;
                 break;
             }
         }
@@ -750,7 +947,7 @@ GameObject* PlayerbotAI::GetGameObject(ObjectGuid guid)
 bool PlayerbotAI::TellMasterNoFacing(string text, PlayerbotSecurityLevel securityLevel)
 {
     Player* master = GetMaster();
-    if (!master)
+    if (!master || !master->GetSession())
     {
         return false;
     }
@@ -1028,15 +1225,20 @@ bool PlayerbotAI::CastSpell(uint32 spellId, Unit* target)
     const SpellEntry* const pSpellInfo = sSpellStore.LookupEntry(spellId);
 
     MotionMaster &mm = *bot->GetMotionMaster();
-    if (bot->isMoving() && GetSpellCastTime(pSpellInfo, NULL))
+    if (GetSpellCastTime(pSpellInfo, NULL))
     {
-        return false;
+        if (bot->isMoving())
+        {
+            bot->StopMoving();
+            mm.Clear();
+        }
     }
 
     if (bot->IsTaxiFlying())
     {
         return false;
     }
+
 
     bot->clearUnitState( UNIT_STAT_CHASE );
     bot->clearUnitState( UNIT_STAT_FOLLOW );
@@ -1297,3 +1499,128 @@ void PlayerbotAI::RemoveShapeshift()
     RemoveAura("ghost wolf");
     RemoveAura("tree of life");
 }
+
+bool PlayerbotAI::HandleNaturalLanguageQuery(const string& text, Player* owner)
+{
+    if (!owner || text.empty())
+        return false;
+
+    if (sAiChatService.ProcessPlayerChat(bot, owner, text))
+        return true;
+
+    string lowerText = text;
+    std::transform(lowerText.begin(), lowerText.end(), lowerText.begin(), ::tolower);
+
+    // 1. Zone Leveling Advice
+    if (lowerText.find("where") != string::npos || lowerText.find("level") != string::npos || lowerText.find("zone") != string::npos || lowerText.find("quest") != string::npos)
+    {
+        uint32 lvl = owner->getLevel();
+        ostringstream out;
+        out << "At level " << lvl << ", ";
+        if (lvl <= 10)
+            out << "you should quest in your starting area (Elwynn Forest, Durotar, Dun Morogh, Tirisfal Glades, Teldrassil, or Mulgore)!";
+        else if (lvl <= 20)
+            out << "great zones for you are Westfall, Loch Modan, Darkshore, The Barrens, or Silverpine Forest!";
+        else if (lvl <= 30)
+            out << "check out Redridge Mountains, Duskwood, Ashenvale, Hillsbrad Foothills, Wetlands, or Thousand Needles!";
+        else if (lvl <= 40)
+            out << "head to Stranglethorn Vale, Arathi Highlands, Desolace, or Badlands!";
+        else if (lvl <= 50)
+            out << "try questing in Tanaris, Feralas, The Hinterlands, or Searing Gorge!";
+        else
+            out << "high-level adventures await in Un'Goro Crater, Western Plaguelands, Eastern Plaguelands, Winterspring, or Burning Steppes!";
+
+        bot->Whisper(out.str(), LANG_UNIVERSAL, owner->GetObjectGuid());
+        return true;
+    }
+
+    // 2. Dungeon Advice
+    if (lowerText.find("dungeon") != string::npos || lowerText.find("inst") != string::npos || lowerText.find("raid") != string::npos)
+    {
+        uint32 lvl = owner->getLevel();
+        ostringstream out;
+        out << "Dungeons for level " << lvl << ": ";
+        if (lvl <= 18)
+            out << "Ragefire Chasm (RFC) or Deadmines!";
+        else if (lvl <= 25)
+            out << "Deadmines, Wailing Caverns (WC), or Shadowfang Keep (SFK)!";
+        else if (lvl <= 35)
+            out << "Blackfathom Deeps (BFD), Stockade, Razorfen Kraul (RFK), or Scarlet Monastery (SM)!";
+        else if (lvl <= 45)
+            out << "Scarlet Monastery (SM), Razorfen Downs (RFD), or Uldaman!";
+        else if (lvl <= 55)
+            out << "Zul'Farrak (ZF), Maraudon, or Sunken Temple (ST)!";
+        else
+            out << "Blackrock Depths (BRD), Stratholme, Scholomance, LBRS/UBRS, or Molten Core raid!";
+
+        bot->Whisper(out.str(), LANG_UNIVERSAL, owner->GetObjectGuid());
+        return true;
+    }
+
+    // 3. Economy & Auction House
+    if (lowerText.find("gold") != string::npos || lowerText.find("ah") != string::npos || lowerText.find("auction") != string::npos || lowerText.find("sell") != string::npos || lowerText.find("buy") != string::npos)
+    {
+        bot->Whisper("I sell surplus loot on the Auction House and buy gear upgrades whenever I visit capital cities!", LANG_UNIVERSAL, owner->GetObjectGuid());
+        return true;
+    }
+
+    // 4. Guild Queries
+    if (lowerText.find("guild") != string::npos || lowerText.find("join") != string::npos)
+    {
+        bot->Whisper("You can invite me or any unguilded bots to your guild, or ask a bot guild master for an invite!", LANG_UNIVERSAL, owner->GetObjectGuid());
+        return true;
+    }
+
+    // 5. Friendly Greetings
+    if (lowerText.find("hi") != string::npos || lowerText.find("hello") != string::npos || lowerText.find("hey") != string::npos || lowerText.find("sup") != string::npos || lowerText.find("yo") != string::npos)
+    {
+        bot->Whisper("Greetings friend! Safe travels across Azeroth!", LANG_UNIVERSAL, owner->GetObjectGuid());
+        return true;
+    }
+
+    // 6. Gratitude
+    if (lowerText.find("thank") != string::npos || lowerText.find("thanks") != string::npos || lowerText.find("ty") != string::npos)
+    {
+        bot->Whisper("You're welcome! For victory!", LANG_UNIVERSAL, owner->GetObjectGuid());
+        return true;
+    }
+
+    // 7. Grouping
+    if (lowerText.find("group") != string::npos || lowerText.find("party") != string::npos)
+    {
+        bot->Whisper("Send me a group invite if you'd like to adventure together!", LANG_UNIVERSAL, owner->GetObjectGuid());
+        return true;
+    }
+
+    // 8. Mage Food & Water Conjuring
+    if (bot->getClass() == CLASS_MAGE && (lowerText.find("food") != string::npos || lowerText.find("water") != string::npos || lowerText.find("eat") != string::npos || lowerText.find("drink") != string::npos))
+    {
+        bot->CastSpell(bot, 587, true);  // Conjure Food
+        bot->CastSpell(bot, 5504, true); // Conjure Water
+        bot->Whisper("Here is some fresh food and water! Enjoy!", LANG_UNIVERSAL, owner->GetObjectGuid());
+        return true;
+    }
+
+    // 9. Mage Portals
+    if (bot->getClass() == CLASS_MAGE && (lowerText.find("portal") != string::npos || lowerText.find("port") != string::npos))
+    {
+        uint32 portalSpell = (bot->GetTeam() == ALLIANCE) ? 11416 : 11419; // Stormwind or Orgrimmar
+        bot->CastSpell(bot, portalSpell, false);
+        bot->Whisper("Opening a portal for you now!", LANG_UNIVERSAL, owner->GetObjectGuid());
+        return true;
+    }
+
+    // 10. Warlock Ritual of Summoning
+    if (bot->getClass() == CLASS_WARLOCK && (lowerText.find("summon") != string::npos))
+    {
+        if (bot->HasSpell(698))
+        {
+            bot->CastSpell(bot, 698, false); // Ritual of Summoning
+            bot->Whisper("Starting Ritual of Summoning! Click the portal to summon!", LANG_UNIVERSAL, owner->GetObjectGuid());
+            return true;
+        }
+    }
+
+    return false;
+}
+

@@ -21,12 +21,19 @@ bool TradeStatusAction::Execute(Event event)
         return false;
     }
 
-    if (trader != master)
+    bool isHumanTrader = (trader && !trader->GetPlayerbotAI());
+
+    if (trader != master && !isHumanTrader)
     {
         bot->Whisper("I'm kind of busy now", LANG_UNIVERSAL, trader->GetObjectGuid());
+        WorldPacket p;
+        uint32 status = 0;
+        p << status;
+        bot->GetSession()->HandleCancelTradeOpcode(p);
+        return false;
     }
 
-    if (trader != master || !ai->GetSecurity()->CheckLevelFor(PLAYERBOT_SECURITY_ALLOW_ALL, true, master))
+    if (!isHumanTrader && (trader != master || !ai->GetSecurity()->CheckLevelFor(PLAYERBOT_SECURITY_ALLOW_ALL, true, master)))
     {
         WorldPacket p;
         uint32 status = 0;
@@ -107,8 +114,19 @@ bool TradeStatusAction::CheckTrade()
         return true;
     }
 
+    Player* trader = bot->GetTrader();
+    if (!trader)
+    {
+        return false;
+    }
+
+    if (!trader->GetPlayerbotAI())
+    {
+        return true;
+    }
+
     Player* master = GetMaster();
-    if (!bot->GetTradeData() || !master->GetTradeData())
+    if (!master || !bot->GetTradeData() || !master->GetTradeData())
     {
         return false;
     }

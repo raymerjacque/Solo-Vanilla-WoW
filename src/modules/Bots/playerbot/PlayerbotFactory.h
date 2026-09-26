@@ -19,6 +19,12 @@ public:
     void CleanRandomize();
     void Randomize();
     void Refresh();
+    void InitTalents();
+    void InitTalents(uint32 specNo);
+    void InitAvailableSpells();
+    void InitPet();
+    void InitSkills();
+    void AutoLearnAll();
 
 private:
     void Randomize(bool incremental);
@@ -27,23 +33,19 @@ private:
     void InitEquipment(bool incremental);
     bool CanEquipItem(ItemPrototype const* proto, uint32 desiredQuality);
     bool CanEquipUnseenItem(uint8 slot, uint16 &dest, uint32 item);
-    void InitSkills();
     void InitTradeSkills();
     void UpdateTradeSkills();
     void SetRandomSkill(uint16 id);
     void InitSpells();
     void ClearSpells();
-    void InitAvailableSpells();
     void InitSpecialSpells();
-    void InitTalents();
-    void InitTalents(uint32 specNo);
     void InitQuests();
-    void InitPet();
     void ClearInventory();
     void InitAmmo();
     void InitMounts();
     void InitPotions();
     void InitFood();
+    void InitPvPRankAndGear();
     bool CanEquipArmor(ItemPrototype const* proto);
     bool CanEquipWeapon(ItemPrototype const* proto);
     void EnchantItem(Item* item);

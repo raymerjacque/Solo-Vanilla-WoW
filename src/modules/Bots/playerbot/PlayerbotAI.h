@@ -111,7 +111,11 @@ public:
 public:
     virtual void UpdateAI(uint32 elapsed);
     virtual void UpdateAIInternal(uint32 elapsed);
+    void CheckMasterTether();
+    void CheckAutoLearn();
+    void CheckGroupSynergy();
     void HandleCommand(uint32 type, const string& text, Player& fromPlayer);
+    bool HandleNaturalLanguageQuery(const string& text, Player* owner);
     void HandleBotOutgoingPacket(const WorldPacket& packet);
     void HandleMasterIncomingPacket(const WorldPacket& packet);
     void HandleMasterOutgoingPacket(const WorldPacket& packet);

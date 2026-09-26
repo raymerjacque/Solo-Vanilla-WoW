@@ -29,6 +29,97 @@ uint32 PlayerbotFactory::tradeSkills[] =
     SKILL_FISHING
 };
 
+namespace {
+    struct PlayerbotFactoryCache
+    {
+        bool initialized;
+
+        vector<uint32> tameableCreatures;
+        vector<uint32> containerItems;
+        vector<uint32> equippableItems;
+        vector<uint32> foodItems;
+        vector<uint32> potionItems;
+        vector<uint32> tradeItems;
+        vector<uint32> enchantSpells;
+        vector<uint32> mountSpells;
+        vector<uint32> trainerCreatures;
+        vector<uint32> projectileItems;
+
+        PlayerbotFactoryCache() : initialized(false) {}
+
+        void Init()
+        {
+            if (initialized)
+                return;
+
+            for (uint32 id = 0; id < sCreatureStorage.GetMaxEntry(); ++id)
+            {
+                CreatureInfo const* co = sCreatureStorage.LookupEntry<CreatureInfo>(id);
+                if (!co) continue;
+                if (co->isTameable())
+                    tameableCreatures.push_back(id);
+                if (co->TrainerType == TRAINER_TYPE_TRADESKILLS || co->TrainerType == TRAINER_TYPE_CLASS)
+                    trainerCreatures.push_back(id);
+            }
+
+            for (uint32 itemId = 0; itemId < sItemStorage.GetMaxEntry(); ++itemId)
+            {
+                ItemPrototype const* proto = sObjectMgr.GetItemPrototype(itemId);
+                if (!proto)
+                    continue;
+
+                if (proto->Class == ITEM_CLASS_CONTAINER && proto->SubClass == ITEM_SUBCLASS_CONTAINER)
+                    containerItems.push_back(itemId);
+
+                if (proto->Class == ITEM_CLASS_WEAPON || proto->Class == ITEM_CLASS_ARMOR || proto->Class == ITEM_CLASS_CONTAINER || proto->Class == ITEM_CLASS_PROJECTILE)
+                    equippableItems.push_back(itemId);
+
+                if (proto->Class == ITEM_CLASS_CONSUMABLE && proto->SubClass == ITEM_SUBCLASS_FOOD && (proto->Spells[0].SpellCategory == 11 || proto->Spells[0].SpellCategory == 59) && proto->Bonding == NO_BIND)
+                    foodItems.push_back(itemId);
+
+                if (proto->Class == ITEM_CLASS_CONSUMABLE && proto->SubClass == ITEM_SUBCLASS_POTION && proto->Spells[0].SpellCategory == 4 && proto->Bonding == NO_BIND)
+                    potionItems.push_back(itemId);
+
+                if (proto->Class == ITEM_CLASS_TRADE_GOODS && proto->Bonding == NO_BIND)
+                    tradeItems.push_back(itemId);
+
+                if (proto->Class == ITEM_CLASS_PROJECTILE)
+                    projectileItems.push_back(itemId);
+            }
+
+            for (uint32 spellId = 0; spellId < sSpellStore.GetNumRows(); ++spellId)
+            {
+                SpellEntry const *spellInfo = sSpellStore.LookupEntry(spellId);
+                if (!spellInfo)
+                    continue;
+
+                for (int j = 0; j < 3; ++j)
+                {
+                    if (spellInfo->Effect[j] == SPELL_EFFECT_ENCHANT_ITEM && spellInfo->EffectMiscValue[j])
+                    {
+                        enchantSpells.push_back(spellId);
+                        break;
+                    }
+                }
+
+                if (spellInfo->EffectApplyAuraName[0] == SPELL_AURA_MOUNTED)
+                {
+                    if (GetSpellCastTime(spellInfo) >= 500 && GetSpellDuration(spellInfo) == -1)
+                    {
+                        int32 effect = std::max(spellInfo->EffectBasePoints[1], spellInfo->EffectBasePoints[2]);
+                        if (effect >= 50)
+                            mountSpells.push_back(spellId);
+                    }
+                }
+            }
+
+            initialized = true;
+        }
+    };
+
+    static PlayerbotFactoryCache s_factoryCache;
+}
+
 void PlayerbotFactory::Randomize()
 {
     Randomize(true);
@@ -124,6 +215,7 @@ void PlayerbotFactory::Randomize(bool incremental)
     InitAmmo();
     InitFood();
     InitPotions();
+    InitPvPRankAndGear();
     InitSecondEquipmentSet();
     InitInventory();
     bot->SetMoney(urand(level * 1000, level * 5 * 1000));
@@ -135,10 +227,11 @@ void PlayerbotFactory::Randomize(bool incremental)
 
 void PlayerbotFactory::InitPet()
 {
+    s_factoryCache.Init();
     Pet* pet = bot->GetPet();
     if (!pet)
     {
-        if (bot->getClass() != CLASS_HUNTER)
+        if (bot->getClass() != CLASS_HUNTER || bot->getLevel() < 10)
         {
             return;
         }
@@ -150,8 +243,9 @@ void PlayerbotFactory::InitPet()
         }
 
         vector<uint32> ids;
-        for (uint32 id = 0; id < sCreatureStorage.GetMaxEntry(); ++id)
+        for (size_t i = 0; i < s_factoryCache.tameableCreatures.size(); ++i)
         {
+            uint32 id = s_factoryCache.tameableCreatures[i];
             CreatureInfo const* co = sCreatureStorage.LookupEntry<CreatureInfo>(id);
             if (!co || !co->isTameable())
             {
@@ -629,6 +723,7 @@ bool PlayerbotFactory::CanEquipItem(ItemPrototype const* proto, uint32 desiredQu
 
 void PlayerbotFactory::InitEquipment(bool incremental)
 {
+    s_factoryCache.Init();
     DestroyItemsVisitor visitor(bot);
     IterateItems(&visitor, ITERATE_ALL_ITEMS);
 
@@ -649,8 +744,9 @@ void PlayerbotFactory::InitEquipment(bool incremental)
 
         do
         {
-            for (uint32 itemId = 0; itemId < sItemStorage.GetMaxEntry(); ++itemId)
+            for (size_t i = 0; i < s_factoryCache.equippableItems.size(); ++i)
             {
+                uint32 itemId = s_factoryCache.equippableItems[i];
                 ItemPrototype const* proto = sObjectMgr.GetItemPrototype(itemId);
                 if (!proto)
                 {
@@ -763,6 +859,7 @@ bool PlayerbotFactory::IsDesiredReplacement(Item* item)
 
 void PlayerbotFactory::InitSecondEquipmentSet()
 {
+    s_factoryCache.Init();
     if (bot->getClass() == CLASS_MAGE || bot->getClass() == CLASS_WARLOCK || bot->getClass() == CLASS_PRIEST)
     {
         return;
@@ -777,8 +874,9 @@ void PlayerbotFactory::InitSecondEquipmentSet()
 
     do
     {
-        for (uint32 itemId = 0; itemId < sItemStorage.GetMaxEntry(); ++itemId)
+        for (size_t i = 0; i < s_factoryCache.equippableItems.size(); ++i)
         {
+            uint32 itemId = s_factoryCache.equippableItems[i];
             ItemPrototype const* proto = sObjectMgr.GetItemPrototype(itemId);
             if (!proto)
             {
@@ -871,27 +969,39 @@ void PlayerbotFactory::InitSecondEquipmentSet()
 
 void PlayerbotFactory::InitBags()
 {
+    s_factoryCache.Init();
     vector<uint32> ids;
 
-    for (uint32 itemId = 0; itemId < sItemStorage.GetMaxEntry(); ++itemId)
+    for (size_t i = 0; i < s_factoryCache.containerItems.size(); ++i)
     {
+        uint32 itemId = s_factoryCache.containerItems[i];
         ItemPrototype const* proto = sObjectMgr.GetItemPrototype(itemId);
-        if (!proto || proto->Class != ITEM_CLASS_CONTAINER)
+        if (!proto || proto->Class != ITEM_CLASS_CONTAINER || proto->SubClass != ITEM_SUBCLASS_CONTAINER)
         {
             continue;
         }
 
-        if (!CanEquipItem(proto, ITEM_QUALITY_NORMAL))
+        if (proto->RequiredLevel > bot->getLevel())
         {
             continue;
         }
+
+        uint32 slots = proto->ContainerSlots;
+        if (slots < 4)
+            continue;
+
+        if (bot->getLevel() < 10 && slots > 8)
+            continue;
+        if (bot->getLevel() < 25 && slots > 12)
+            continue;
+        if (bot->getLevel() < 45 && slots > 16)
+            continue;
 
         ids.push_back(itemId);
     }
 
     if (ids.empty())
     {
-        sLog.outError("%s: no bags found", bot->GetName());
         return;
     }
 
@@ -921,6 +1031,7 @@ void PlayerbotFactory::InitBags()
 
 void PlayerbotFactory::EnchantItem(Item* item)
 {
+    s_factoryCache.Init();
     if (urand(0, 100) < 100 * sPlayerbotAIConfig.randomGearLoweringChance)
     {
         return;
@@ -935,8 +1046,9 @@ void PlayerbotFactory::EnchantItem(Item* item)
     int32 itemLevel = proto->ItemLevel;
 
     vector<uint32> ids;
-    for (uint32 id = 0; id < sSpellStore.GetNumRows(); ++id)
+    for (size_t idx = 0; idx < s_factoryCache.enchantSpells.size(); ++idx)
     {
+        uint32 id = s_factoryCache.enchantSpells[idx];
         SpellEntry const *entry = sSpellStore.LookupEntry(id);
         if (!entry)
         {
@@ -1169,10 +1281,12 @@ void PlayerbotFactory::SetRandomSkill(uint16 id)
 
 void PlayerbotFactory::InitAvailableSpells()
 {
+    s_factoryCache.Init();
     bot->learnDefaultSpells();
 
-    for (uint32 id = 0; id < sCreatureStorage.GetMaxEntry(); ++id)
+    for (size_t i = 0; i < s_factoryCache.trainerCreatures.size(); ++i)
     {
+        uint32 id = s_factoryCache.trainerCreatures[i];
         CreatureInfo const* co = sCreatureStorage.LookupEntry<CreatureInfo>(id);
         if (!co)
         {
@@ -1224,9 +1338,36 @@ void PlayerbotFactory::InitAvailableSpells()
                 continue;
             }
 
-            ai->CastSpell(tSpell->spell, bot);
+            bot->learnSpell(tSpell->spell, false);
         }
     }
+
+    if (bot->getClass() == CLASS_WARLOCK)
+    {
+        bot->learnSpell(688, false); // Summon Imp (Level 1)
+        if (bot->getLevel() >= 10) bot->learnSpell(697, false); // Summon Voidwalker (Level 10)
+        if (bot->getLevel() >= 20) bot->learnSpell(712, false); // Summon Succubus (Level 20)
+        if (bot->getLevel() >= 30) bot->learnSpell(691, false); // Summon Felhunter (Level 30)
+        if (bot->getLevel() >= 50) bot->learnSpell(1122, false); // Summon Infernal (Level 50)
+    }
+
+    if (bot->getClass() == CLASS_HUNTER && bot->getLevel() >= 10)
+    {
+        bot->learnSpell(883, false);  // Call Pet
+        bot->learnSpell(982, false);  // Revive Pet
+        bot->learnSpell(136, false);  // Mend Pet
+        bot->learnSpell(2641, false); // Dismiss Pet
+        bot->learnSpell(6991, false); // Feed Pet
+        bot->learnSpell(1515, false); // Tame Beast
+    }
+}
+
+void PlayerbotFactory::AutoLearnAll()
+{
+    InitAvailableSpells();
+    InitSkills();
+    InitPet();
+    InitTalents();
 }
 
 void PlayerbotFactory::InitSpecialSpells()
@@ -1394,6 +1535,7 @@ void PlayerbotFactory::ClearInventory()
 
 void PlayerbotFactory::InitAmmo()
 {
+    s_factoryCache.Init();
     if (bot->getClass() != CLASS_HUNTER && bot->getClass() != CLASS_ROGUE && bot->getClass() != CLASS_WARRIOR)
     {
         return;
@@ -1422,39 +1564,49 @@ void PlayerbotFactory::InitAmmo()
         return;
     }
 
-    QueryResult *results = WorldDatabase.PQuery("select max(`entry`), max(`RequiredLevel`) from `item_template` where `class` = '%u' and `subclass` = '%u' and `RequiredLevel` <= '%u'",
-            ITEM_CLASS_PROJECTILE, subClass, bot->getLevel());
-    if (!results)
+    uint32 bestEntry = 0;
+    uint32 maxReqLevel = 0;
+
+    for (size_t i = 0; i < s_factoryCache.projectileItems.size(); ++i)
     {
-        return;
+        uint32 itemId = s_factoryCache.projectileItems[i];
+        ItemPrototype const* proto = sObjectMgr.GetItemPrototype(itemId);
+        if (!proto || proto->SubClass != subClass || proto->RequiredLevel > bot->getLevel())
+        {
+            continue;
+        }
+
+        if (bestEntry == 0 || proto->RequiredLevel >= maxReqLevel)
+        {
+            bestEntry = itemId;
+            maxReqLevel = proto->RequiredLevel;
+        }
     }
 
-    Field* fields = results->Fetch();
-    if (fields)
+    if (bestEntry)
     {
-        uint32 entry = fields[0].GetUInt32();
         for (int i = 0; i < 5; i++)
         {
-            Item* newItem = bot->StoreNewItemInInventorySlot(entry, 1000);
+            Item* newItem = bot->StoreNewItemInInventorySlot(bestEntry, 1000);
             if (newItem)
             {
                 newItem->AddToUpdateQueueOf(bot);
             }
         }
-        bot->SetAmmo(entry);
+        bot->SetAmmo(bestEntry);
     }
-
-    delete results;
 }
 
 void PlayerbotFactory::InitMounts()
 {
+    s_factoryCache.Init();
     map<int32, vector<uint32> > spells;
 
-    for (uint32 spellId = 0; spellId < sSpellStore.GetNumRows(); ++spellId)
+    for (size_t i = 0; i < s_factoryCache.mountSpells.size(); ++i)
     {
+        uint32 spellId = s_factoryCache.mountSpells[i];
         SpellEntry const *spellInfo = sSpellStore.LookupEntry(spellId);
-        if (!spellInfo || spellInfo->EffectApplyAuraName[0] != SPELL_AURA_MOUNTED)
+        if (!spellInfo)
         {
             continue;
         }
@@ -1492,9 +1644,11 @@ void PlayerbotFactory::InitMounts()
 
 void PlayerbotFactory::InitPotions()
 {
+    s_factoryCache.Init();
     map<uint32, vector<uint32> > items;
-    for (uint32 itemId = 0; itemId < sItemStorage.GetMaxEntry(); ++itemId)
+    for (size_t i = 0; i < s_factoryCache.potionItems.size(); ++i)
     {
+        uint32 itemId = s_factoryCache.potionItems[i];
         ItemPrototype const* proto = sObjectMgr.GetItemPrototype(itemId);
         if (!proto)
         {
@@ -1564,9 +1718,11 @@ void PlayerbotFactory::InitPotions()
 
 void PlayerbotFactory::InitFood()
 {
+    s_factoryCache.Init();
     map<uint32, vector<uint32> > items;
-    for (uint32 itemId = 0; itemId < sItemStorage.GetMaxEntry(); ++itemId)
+    for (size_t i = 0; i < s_factoryCache.foodItems.size(); ++i)
     {
+        uint32 itemId = s_factoryCache.foodItems[i];
         ItemPrototype const* proto = sObjectMgr.GetItemPrototype(itemId);
         if (!proto)
         {
@@ -1610,12 +1766,21 @@ void PlayerbotFactory::InitFood()
 
         uint32 itemId = ids[index];
         ItemPrototype const* proto = sObjectMgr.GetItemPrototype(itemId);
-        Item* newItem = bot->StoreNewItemInInventorySlot(itemId, urand(1, proto->GetMaxStackSize()));
-        if (newItem)
+        if (!proto) continue;
+
+        uint32 stackSize = proto->GetMaxStackSize() > 1 ? proto->GetMaxStackSize() : 20;
+        uint32 totalAmount = stackSize * urand(2, 3);
+        while (totalAmount > 0)
         {
-            newItem->AddToUpdateQueueOf(bot);
+            uint32 count = std::min(totalAmount, stackSize);
+            Item* newItem = bot->StoreNewItemInInventorySlot(itemId, count);
+            if (newItem)
+            {
+                newItem->AddToUpdateQueueOf(bot);
+            }
+            totalAmount -= count;
         }
-   }
+    }
 }
 
 
@@ -1681,9 +1846,11 @@ Item* PlayerbotFactory::StoreItem(uint32 itemId, uint32 count)
 
 void PlayerbotFactory::InitInventoryTrade()
 {
+    s_factoryCache.Init();
     vector<uint32> ids;
-    for (uint32 itemId = 0; itemId < sItemStorage.GetMaxEntry(); ++itemId)
+    for (size_t i = 0; i < s_factoryCache.tradeItems.size(); ++i)
     {
+        uint32 itemId = s_factoryCache.tradeItems[i];
         ItemPrototype const* proto = sObjectMgr.GetItemPrototype(itemId);
         if (!proto)
         {
@@ -1757,6 +1924,7 @@ void PlayerbotFactory::InitInventoryTrade()
 
 void PlayerbotFactory::InitInventoryEquip()
 {
+    s_factoryCache.Init();
     vector<uint32> ids;
 
     uint32 desiredQuality = itemQuality;
@@ -1766,8 +1934,9 @@ void PlayerbotFactory::InitInventoryEquip()
     }
     }
 
-    for (uint32 itemId = 0; itemId < sItemStorage.GetMaxEntry(); ++itemId)
+    for (size_t i = 0; i < s_factoryCache.equippableItems.size(); ++i)
     {
+        uint32 itemId = s_factoryCache.equippableItems[i];
         ItemPrototype const* proto = sObjectMgr.GetItemPrototype(itemId);
         if (!proto)
         {
@@ -1812,4 +1981,56 @@ void PlayerbotFactory::InitInventoryEquip()
             break;
         }
    }
+}
+
+void PlayerbotFactory::InitPvPRankAndGear()
+{
+    if (level < 10)
+        return;
+
+    uint32 rank = 0;
+    if (level == 60)
+    {
+        uint32 chance = urand(1, 100);
+        if (chance <= 10) rank = 14;      // 10% High Warlord / Grand Marshal
+        else if (chance <= 25) rank = 13; // 15% Field Marshal / Warlord
+        else if (chance <= 45) rank = 11; // 20% Commander / Lieutenant General
+        else if (chance <= 75) rank = 8;  // 30% Knight-Captain / Legionnaire
+        else rank = urand(1, 5);          // 25% Ranks 1-5
+    }
+    else
+    {
+        rank = (uint32)urand(1, std::max((uint32)1, level / 5));
+    }
+
+    if (rank > 0)
+    {
+        bot->SetByteValue(PLAYER_BYTES_3, 3, rank);
+
+        uint32 trinketId = (bot->GetTeam() == ALLIANCE) ? 18834 : 18854;
+        bot->StoreNewItemInInventorySlot(trinketId, 1);
+
+        if (rank == 14 && level == 60)
+        {
+            uint8 cls = bot->getClass();
+            uint32 weaponId = 0;
+            if (bot->GetTeam() == ALLIANCE)
+            {
+                if (cls == CLASS_WARRIOR || cls == CLASS_PALADIN) weaponId = 18867;
+                else if (cls == CLASS_HUNTER || cls == CLASS_ROGUE) weaponId = 18838;
+                else if (cls == CLASS_MAGE || cls == CLASS_PRIEST || cls == CLASS_WARLOCK || cls == CLASS_DRUID) weaponId = 18842;
+            }
+            else
+            {
+                if (cls == CLASS_WARRIOR || cls == CLASS_PALADIN) weaponId = 18876;
+                else if (cls == CLASS_HUNTER || cls == CLASS_ROGUE) weaponId = 18865;
+                else if (cls == CLASS_MAGE || cls == CLASS_PRIEST || cls == CLASS_WARLOCK || cls == CLASS_DRUID || cls == CLASS_SHAMAN) weaponId = 18873;
+            }
+
+            if (weaponId)
+            {
+                bot->StoreNewItemInInventorySlot(weaponId, 1);
+            }
+        }
+    }
 }

@@ -8,24 +8,36 @@ using namespace ai;
 
 bool ReviveFromCorpseAction::Execute(Event event)
 {
+    if (bot->IsAlive())
+    {
+        return false;
+    }
+
     Corpse* corpse = bot->GetCorpse();
     if (!corpse)
     {
-        return false;
+        bot->BuildPlayerRepop();
+        corpse = bot->GetCorpse();
     }
 
-    time_t reclaimTime = corpse->GetGhostTime() + bot->GetCorpseReclaimDelay( corpse->GetType()==CORPSE_RESURRECTABLE_PVP );
-    if (reclaimTime > time(0) || corpse->GetDistance(bot) > sPlayerbotAIConfig.spellDistance)
+    time_t now = time(0);
+    time_t deathTime = corpse ? corpse->GetGhostTime() : now;
+
+    if (now - deathTime < 30)
     {
         return false;
     }
 
-    PlayerbotChatHandler ch(bot);
-    if (! ch.revive(*bot))
+    bot->ResurrectPlayer(0.5f, false);
+    bot->SpawnCorpseBones();
+    bot->SaveToDB();
+
+    Player* master = ai->GetMaster();
+    if (master && master->IsInWorld() && master != bot)
     {
-        ai->TellMaster(".. could not be revived ..");
-        return false;
+        bot->TeleportTo(master->GetMapId(), master->GetPositionX(), master->GetPositionY(), master->GetPositionZ(), master->GetOrientation());
     }
+
     context->GetValue<Unit*>("current target")->Set(NULL);
     bot->SetSelectionGuid(ObjectGuid());
     return true;

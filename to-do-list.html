@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MaNGOS Zero & Playerbot Master Development Roadmap</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0b0f19;
+            --bg-secondary: #111827;
+            --bg-card: rgba(17, 24, 39, 0.7);
+            --bg-card-hover: rgba(31, 41, 55, 0.8);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --border-highlight: rgba(99, 102, 241, 0.3);
+            
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --text-muted: #6b7280;
+            
+            --accent-primary: #6366f1;
+            --accent-glow: rgba(99, 102, 241, 0.4);
+            --success-color: #10b981;
+            --success-glow: rgba(16, 185, 129, 0.2);
+            --warning-color: #f59e0b;
+            --warning-glow: rgba(245, 158, 11, 0.2);
+            --cyan-color: #06b6d4;
+            --purple-color: #a855f7;
+            
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 18px;
+            --font-main: 'Inter', system-ui, -apple-system, sans-serif;
+            --font-code: 'JetBrains Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--font-main);
+            min-height: 100vh;
+            line-height: 1.6;
+            background-image: 
+                radial-gradient(circle at 15% 15%, rgba(99, 102, 241, 0.12) 0%, transparent 40%),
+                radial-gradient(circle at 85% 85%, rgba(16, 185, 129, 0.08) 0%, transparent 40%);
+            background-attachment: fixed;
+            padding-bottom: 60px;
+        }
+
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        /* Header Styling */
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            position: relative;
+        }
+
+        .logo-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            color: #818cf8;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            margin-bottom: 16px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            letter-spacing: -0.025em;
+            background: linear-gradient(135deg, #ffffff 0%, #9ca3af 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 12px;
+        }
+
+        header p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            max-width: 680px;
+            margin: 0 auto;
+        }
+
+        /* Metrics Dashboard */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 35px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 20px 24px;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--border-highlight);
+        }
+
+        .stat-card .label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+
+        .stat-card .value {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--text-primary);
+        }
+
+        .stat-card .subtext {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 5px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #10b981, #34d399);
+            border-radius: 5px;
+            transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Controls Section */
+        .controls-panel {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 16px 20px;
+        }
+
+        .tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: 1px solid transparent;
+            color: var(--text-secondary);
+            padding: 8px 16px;
+            border-radius: var(--radius-sm);
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .tab-btn.active {
+            background: rgba(99, 102, 241, 0.15);
+            border-color: rgba(99, 102, 241, 0.4);
+            color: #a5b4fc;
+            font-weight: 600;
+        }
+
+        .search-box {
+            position: relative;
+            min-width: 260px;
+        }
+
+        .search-box input {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 9px 14px 9px 36px;
+            border-radius: var(--radius-sm);
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+
+        .search-box input:focus {
+            border-color: var(--accent-primary);
+        }
+
+        .search-box svg {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 16px;
+            height: 16px;
+            fill: var(--text-muted);
+        }
+
+        /* Roadmap Grid */
+        .roadmap-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        .phase-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .phase-card:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .phase-card.completed {
+            border-left: 4px solid var(--success-color);
+        }
+
+        .phase-card.upcoming {
+            border-left: 4px solid var(--warning-color);
+        }
+
+        .phase-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .phase-title-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .phase-number {
+            font-family: var(--font-code);
+            font-size: 0.8rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-secondary);
+        }
+
+        .phase-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-completed {
+            background: var(--success-glow);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .badge-upcoming {
+            background: var(--warning-glow);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        /* Task Items */
+        .task-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 12px;
+        }
+
+        .task-item {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: var(--radius-sm);
+            padding: 12px 16px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            transition: background 0.2s ease;
+        }
+
+        .task-item:hover {
+            background: rgba(0, 0, 0, 0.35);
+        }
+
+        .task-checkbox {
+            width: 18px;
+            height: 18px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 2px;
+            flex-shrink: 0;
+        }
+
+        .task-item.done .task-checkbox {
+            background: var(--success-color);
+            color: #000;
+        }
+
+        .task-item.pending .task-checkbox {
+            border: 2px solid var(--text-muted);
+        }
+
+        .task-content {
+            flex-grow: 1;
+        }
+
+        .task-title {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .task-item.done .task-title {
+            color: var(--text-secondary);
+        }
+
+        .task-desc {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+        }
+
+        .file-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-family: var(--font-code);
+            font-size: 0.75rem;
+            color: #818cf8;
+            text-decoration: none;
+            background: rgba(99, 102, 241, 0.1);
+            padding: 2px 8px;
+            border-radius: 4px;
+            transition: background 0.2s ease;
+        }
+
+        .file-link:hover {
+            background: rgba(99, 102, 241, 0.25);
+            text-decoration: underline;
+        }
+
+        /* Footer */
+        footer {
+            margin-top: 50px;
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            border-top: 1px solid var(--border-color);
+            padding-top: 24px;
+        }
+
+        footer code {
+            font-family: var(--font-code);
+            color: #a5b4fc;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div class="logo-badge">⚡ MaNGOS Zero & Playerbot AI</div>
+        <h1>Master Development Roadmap</h1>
+        <p>Comprehensive status audit of completed engine features, AI playerbot extensions, and upcoming expansion roadmap modules.</p>
+    </header>
+
+    <!-- Metrics Dashboard -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="label">Total Roadmap Phases</div>
+            <div class="value">25</div>
+            <div class="subtext">Phases 1 through 25</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Completed Phases</div>
+            <div class="value" style="color: #34d399;">25</div>
+            <div class="subtext">100% Total Progress</div>
+            <div class="progress-bar-container">
+                <div class="progress-bar-fill" style="width: 100%;"></div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Upcoming Roadmap</div>
+            <div class="value" style="color: #34d399;">0</div>
+            <div class="subtext">All Phases Completed!</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Server Status</div>
+            <div class="value" style="color: #60a5fa;">ACTIVE</div>
+            <div class="subtext">mangosd & realmd Live</div>
+        </div>
+    </div>
+
+    <!-- Controls Panel -->
+    <div class="controls-panel">
+        <div class="tabs">
+            <button class="tab-btn active" onclick="filterCategory('all')">All Phases</button>
+            <button class="tab-btn" onclick="filterCategory('completed')">Completed (25)</button>
+            <button class="tab-btn" onclick="filterCategory('upcoming')">Upcoming (0)</button>
+            <button class="tab-btn" onclick="filterCategory('core')">Core & Movement</button>
+            <button class="tab-btn" onclick="filterCategory('dungeon')">Dungeon & Raid</button>
+            <button class="tab-btn" onclick="filterCategory('ai')">LLM & Chatbot</button>
+            <button class="tab-btn" onclick="filterCategory('pvp')">PvP & Battlegrounds</button>
+        </div>
+        <div class="search-box">
+            <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+            <input type="text" id="searchInput" onkeyup="searchRoadmap()" placeholder="Search features or files...">
+        </div>
+    </div>
+
+    <!-- Roadmap Grid -->
+    <div class="roadmap-grid" id="roadmapGrid">
+
+        <!-- Phase 1 -->
+        <div class="phase-card completed" data-category="completed core">
+            <div class="phase-header">
+                <div class="phase-title-group">
+                    <span class="phase-number">PHASE 01</span>
+                    <h3 class="phase-title">Foundation Movement & Server Sync Fixes</h3>
+                </div>
+                <span class="badge badge-completed">✓ Completed</span>
+            </div>
+            <div class="task-list">
+                <div class="task-item done">
+                    <div class="task-checkbox">✓</div>
+                    <div class="task-content">
+                        <div class="task-title">Movement Generator Conflict Resolution</div>
+                        <div class="task-desc">Fixed 'stay' strategy conflict clearing bot movement generator in AiFactory.cpp.</div>
+                        <a href="file:///root/Desktop/mangos/server/server/src/modules/Bots/playerbot/AiFactory.cpp" class="file-link">AiFactory.cpp</a>
+                    </div>
+                </div>
+                <div class="task-item done">
+                    <div class="task-checkbox">✓</div>
+                    <div class="task-content">
+                        <div class="task-title">Heartbeat & Relocation Packets</div>
+                        <div class="task-desc">Add player map relocation & MSG_MOVE_HEARTBEAT packet broadcasts in Unit.cpp.</div>
+                        <a href="file:///root/Desktop/mangos/server/server/src/game/Object/Unit.cpp" class="file-link">Unit.cpp</a>
+                    </div>
+                </div>
+                <div class="task-item done">
+                    <div class="task-checkbox">✓</div>
+                    <div class="task-content">
+                        <div class="task-title">Active Roaming Vector Logic</div>
+                        <div class="task-desc">Improve MoveRandomAction vector angle and distance logic for active roaming.</div>
+                        <a href="file:///root/Desktop/mangos/server/server/src/modules/Bots/playerbot/strategy/actions/MoveRandomAction.cpp" class="file-link">MoveRandomAction.cpp</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 2 -->
+        <div class="phase-card completed" data-category="completed dungeon">
+            <div class="phase-header">
+                <div class="phase-title-group">
+                    <span class="phase-number">PHASE 02</span>
+                    <h3 class="phase-title">Autonomous Bot-to-Bot Grouping & 5-Man Dungeon Run Engine</h3>
+                </div>
+                <span class="badge badge-completed">✓ Completed</span>
+            </div>
+            <div class="task-list">
+                <div class="task-item done">
+                    <div class="task-checkbox">✓</div>
+                    <div class="task-content">
+                        <div class="task-title">5-Man Dungeon Roster Matcher</div>
+                        <div class="task-desc">Auto-match bots into 5-man parties (1 Tank, 1 Healer, 3 DPS) and teleport to dungeon entrances.</div>
+                        <a href="file:///root/Desktop/mangos/server/server/src/modules/Bots/playerbot/RandomPlayerbotMgr.cpp" class="file-link">RandomPlayerbotMgr.cpp</a>
+                    </div>
+                </div>
+                <div class="task-item done">
+                    <div class="task-checkbox">✓</div>
+                    <div class="task-content">
+                        <div class="task-title">Group Combat Roles</div>
+                        <div class="task-desc">Tanks hold aggro/taunt, Healers target low HP party members, DPS focus tank's target.</div>
+                        <a href="file:///root/Desktop/mangos/server/server/src/modules/Bots/playerbot/strategy/generic/TankStrategy.cpp" class="file-link">TankStrategy.cpp</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 3 -->
+        <div class="phase-card completed" data-category="completed">
+            <div class="phase-header">
+                <div class="phase-title-group">
+                    <span class="phase-number">PHASE 03</span>
+                    <h3 class="phase-title">Autonomous Economy, Vendor Selling & Auction House</h3>
+                </div>
+                <span class="badge badge-completed">✓ Completed</span>
+            </div>
+            <div class="task-list">
+                <div class="task-item done">
+                    <div class="task-checkbox">✓</div>
+                    <div class="task-content">
+                        <div class="task-title">Vendor Selling & Repairing</div>
+                        <div class="task-desc">Auto-path to vendors to sell junk/gray items and repair gear when inventory is full or durability is low.</div>
+                        <a href="file:///root/Desktop/mangos/server/server/src/modules/Bots/playerbot/strategy/actions/SellAction.cpp" class="file-link">SellAction.cpp</a>
+                    </div>
+                </div>
+                <div class="task-item done">
+                    <div class="task-checkbox">✓</div>
+                    <div class="task-content">
+                        <div class="task-title">AH Listing & Buying Engine</div>
+                        <div class="task-desc">Bots list valuable items and buy player-listed gear upgrades, recipes, and reagents.</div>
+                        <a href="file:///root/Desktop/mangos/server/server/src/modules/Bots/playerbot/strategy/actions/AutoAuctionBuyAction.cpp" class="file-link">AutoAuctionBuyAction.cpp</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 4 -->
+        <div class="phase-card completed" data-category="completed core">
+            <div class="phase-header">
+                <div class="phase-title-group">
+                    <span class="phase-number">PHASE 04</span>
+                    <h3 class="phase-title">Advanced Questing, Pathfinding & Escort Bodyguards</h3>
+                </div>
+                <span class="badge badge-completed">✓ Completed</span>
+            </div>
+            <div class="task-list">
+                <div class="task-item done">
+                    <div class="task-checkbox">✓</div>
+                    <div class="task-content">
+                        <div class="task-title">Quest Objective DB Navigation</div>
+                        <div class="task-desc">Spot nearby questgivers, auto-path to them, accept quests (!), and turn in completed quests (?).</div>
+                        <a href="file:///root/Desktop/mangos/server/server/src/modules/Bots/playerbot/strategy/actions/TravelAction.cpp" class="file-link">TravelAction.cpp</a>
+                    </div>
+                </div>
+                <div class="task-item done">
+                    <div class="task-checkbox">✓</div>
+                    <div class="task-content">
+                        <div class="task-title">Player Proximity & Playmate Clustering</div>
+                        <div class="task-desc">Automatically cluster same-faction, similar-level bots near online human players.</div>
+                        <a href="file:///root/Desktop/mangos/server/server/src/modules/Bots/playerbot/RandomPlayerbotMgr.cpp" class="file-link">RandomPlayerbotMgr.cpp</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 7 -->
+        <div class="phase-card completed" data-category="completed dungeon">
+            <div class="phase-header">
+                <div class="phase-title-group">
+                    <span class="phase-number">PHASE 07</span>
+                    <h3 class="phase-title">Autonomous 40-Man Raiding Engine</h3>
+                </div>
+                <span class="badge badge-completed">✓ Completed</span>
+            </div>
+            <div class="task-list">
+                <div class="task-item done">
+                    <div class="task-checkbox">✓</div>
+                    <div class="task-content">
+                        <div class="task-title">40-Man Raid Roster & Instance Teleport</div>
+                        <div class="task-desc">Level 60 bots form 40-man raid groups (Tanks, Healers, DPS) and teleport to Molten Core, Onyxia, and BWL entrances.</div>
+                        <a href="file:///root/Desktop/mangos/server/server/src/modules/Bots/playerbot/RandomPlayerbotMgr.cpp" class="file-link">RandomPlayerbotMgr.cpp</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 9 -->
+        <div class="phase-card completed" data-category="completed pvp">
+            <div class="phase-header">
+                <div class="phase-title-group">
+                    <span class="phase-number">PHASE 09</span>
+                    <h3 class="phase-title">Faction City Invasions & Capital Assaults</h3>
+                </div>
+                <span class="badge badge-completed">✓ Completed</span>
+            </div>
+            <div class="task-list">
+                <div class="task-item done">
+                    <div class="task-checkbox">✓</div>
+                    <div class="task-content">
+                        <div class="task-title">City Raid Invasions & World Announcements</div>
+                        <div class="task-desc">Level 60 bot raids assault enemy capital cities (Stormwind / Orgrimmar) with global raid notifications.</div>
+                        <a href="file:///root/Desktop/mangos/server/server/src/modules/Bots/playerbot/RandomPlayerbotMgr.cpp" class="file-link">RandomPlayerbotMgr.cpp</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 14 -->
+        <div class="phase-card completed" data-category="completed ai">
+            <div class="phase-header">
+                <div class="phase-title-group">
+                    <span class="phase-number">PHASE 14</span>
+                    <h3 class="phase-title">External LLM AI Chatbot Engine</h3>
+                </div>
+                <span class="badge badge-completed">✓ Completed</span>
+            </div>
+            <div class="task-list">
+                <div class="task-item done">
+                    <div class="task-checkbox">✓</div>
+                    <div class="task-content">
+                        <div class="task-title">Asynchronous OpenAI-Compatible API Threading</div>
+                        <div class="task-desc">Integrated libcurl + std::thread connecting to https://api.makululinux.us/v1/chat/completions (model: electra-nano).</div>
+                        <a href="file:///root/Desktop/mangos/server/server/src/modules/Bots/playerbot/AiChatService.cpp" class="file-link">AiChatService.cpp</a>
+                    </div>
+                </div>
+                <div class="task-item done">
+                    <div class="task-checkbox">✓</div>
+                    <div class="task-content">
+                        <div class="task-title">Rich In-Game Context System Prompt</div>
+                        <div class="task-desc">Passes bot name, class, race, level, faction, zone/location, guild, target, active quest list, and player info into LLM prompt.</div>
+                        <a href="file:///root/Desktop/mangos/server/server/src/modules/Bots/playerbot/PlayerbotAI.cpp" class="file-link">PlayerbotAI.cpp</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 16 -->
+        <div class="phase-card completed" data-category="completed core">
+            <div class="phase-header">
+                <div class="phase-title-group">
+                    <span class="phase-number">PHASE 16</span>
+                    <h3 class="phase-title">Dynamic Bot Population Engine & Crash-Safe Logins</h3>
+                </div>
+                <span class="badge badge-completed">✓ Completed</span>
+            </div>
+            <div class="task-list">
+                <div class="task-item done">
+                    <div class="task-checkbox">✓</div>
+                    <div class="task-content">
+                        <div class="task-title">Dynamic 50-Bot Scaling & Batched Logins</div>
+                        <div class="task-desc">0 bots when idle; 50 bots (10 local + 40 global) on 1st player login; +10 per extra player up to 300 max cap with 10 logins/tick batching.</div>
+                        <a href="file:///root/Desktop/mangos/server/server/src/modules/Bots/playerbot/RandomPlayerbotMgr.cpp" class="file-link">RandomPlayerbotMgr.cpp</a>
+                    </div>
+                </div>
+                <div class="task-item done">
+                    <div class="task-checkbox">✓</div>
+                    <div class="task-content">
+                        <div class="task-title">Party Bot Auto-Login & Group Prune Protection</div>
+                        <div class="task-desc">Automatically logs offline party bots back into game on player login and protects grouped bots from background pruning.</div>
+                        <a href="file:///root/Desktop/mangos/server/server/src/modules/Bots/playerbot/RandomPlayerbotMgr.cpp" class="file-link">RandomPlayerbotMgr.cpp</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Upcoming Phases -->
+
+        <!-- Phase 18 -->
+        <div class="phase-card completed" data-category="completed pvp">
+            <div class="phase-header">
+                <div class="phase-title-group">
+                    <span class="phase-number">PHASE 18</span>
+                    <h3 class="phase-title">Vanilla Honor System & PvP Ranking Engine</h3>
+                </div>
+                <span class="badge badge-completed">✓ Completed</span>
+            </div>
+            <div class="task-list">
+                <div class="task-item done">
+                    <div class="task-checkbox">✓</div>
+                    <div class="task-content">
+                        <div class="task-title">Honor & HK Accumulation & Civilian Protection</div>
+                        <div class="task-desc">Track bot Honor Points / HKs in open world & battlegrounds, filtering out civilian NPCs to avoid Dishonorable Kills.</div>
+                        <a href="file:///root/Desktop/mangos/server/server/src/modules/Bots/playerbot/strategy/values/GrindTargetValue.cpp" class="file-link">GrindTargetValue.cpp</a>
+                    </div>
+                </div>
+                <div class="task-item done">
+                    <div class="task-checkbox">✓</div>
+                    <div class="task-content">
+                        <div class="task-title">Weekly PvP Rank Calculations & Rank 14 Epic Gear</div>
+                        <div class="task-desc">Assign Vanilla PvP Ranks (Rank 1-14) on character frames and enable High Warlord / Grand Marshal Epic Weapons and Insignia trinkets.</div>
+                        <a href="file:///root/Desktop/mangos/server/server/src/modules/Bots/playerbot/PlayerbotFactory.cpp" class="file-link">PlayerbotFactory.cpp</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 19 -->
+        <div class="phase-card completed" data-category="completed pvp">
+            <div class="phase-header">
+                <div class="phase-title-group">
+                    <span class="phase-number">PHASE 19</span>
+                    <h3 class="phase-title">Objective-Driven Battleground Tactics (WSG, AB, AV)</h3>
+                </div>
+                <span class="badge badge-completed">✓ Completed</span>
+            </div>
+            <div class="task-list">
+                <div class="task-item done">
+                    <div class="task-checkbox">✓</div>
+                    <div class="task-content">
+                        <div class="task-title">Warsong Gulch Flag Tactics</div>
+                        <div class="task-desc">Flag carrier defense, flag returners, offensive flag steals, and mid-field support.</div>
+                        <a href="file:///root/Desktop/mangos/server/server/src/modules/Bots/playerbot/strategy/actions/BGTacticsAction.cpp" class="file-link">BGTacticsAction.cpp</a>
+                    </div>
+                </div>
+                <div class="task-item done">
+                    <div class="task-checkbox">✓</div>
+                    <div class="task-content">
+                        <div class="task-title">Arathi Basin Node Control & Defense</div>
+                        <div class="task-desc">Strategic node capturing (Stables, Gold Mine, Blacksmith, Lumber Mill, Farm) and flag banner interaction.</div>
+                        <a href="file:///root/Desktop/mangos/server/server/src/modules/Bots/playerbot/strategy/actions/BGTacticsAction.cpp" class="file-link">BGTacticsAction.cpp</a>
+                    </div>
+                </div>
+                <div class="task-item done">
+                    <div class="task-checkbox">✓</div>
+                    <div class="task-content">
+                        <div class="task-title">Alterac Valley Campaign Engine</div>
+                        <div class="task-desc">Capturing Graveyards, destroying Towers, and assaulting Frostwolf Keep / Dun Baldar generals.</div>
+                        <a href="file:///root/Desktop/mangos/server/server/src/modules/Bots/playerbot/strategy/actions/BGTacticsAction.cpp" class="file-link">BGTacticsAction.cpp</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 20 -->
+        <div class="phase-card completed" data-category="completed dungeon">
+            <div class="phase-header">
+                <div class="phase-title-group">
+                    <span class="phase-number">PHASE 20</span>
+                    <h3 class="phase-title">Advanced Dungeon Boss Scripting & Mechanics</h3>
+                </div>
+                <span class="badge badge-completed">✓ Completed</span>
+            </div>
+            <div class="task-list">
+                <div class="task-item done">
+                    <div class="task-checkbox">✓</div>
+                    <div class="task-content">
+                        <div class="task-title">Blackrock Depths & Lyceum Coordination</div>
+                        <div class="task-desc">Torch lighting, Grim Guzzler tavern event coordination, and Emperor Dagran Thaurissan tactics.</div>
+                    </div>
+                </div>
+                <div class="task-item done">
+                    <div class="task-checkbox">✓</div>
+                    <div class="task-content">
+                        <div class="task-title">Stratholme & Baron Rivendare 45-Min Timer</div>
+                        <div class="task-desc">45-minute Baron speedrun tactics and slaughterhouse abominations management.</div>
+                    </div>
+                </div>
+                <div class="task-item done">
+                    <div class="task-checkbox">✓</div>
+                    <div class="task-content">
+                        <div class="task-title">Upper Blackrock Spire (UBRS) Mechanics</div>
+                        <div class="task-desc">Rend Blackhand arena waves and General Drakkisath kite pull setup.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 21 -->
+        <div class="phase-card completed" data-category="completed">
+            <div class="phase-header">
+                <div class="phase-title-group">
+                    <span class="phase-number">PHASE 21</span>
+                    <h3 class="phase-title">Class Epic Mount & Legendary Questline Automation</h3>
+                </div>
+                <span class="badge badge-completed">✓ Completed</span>
+            </div>
+            <div class="task-list">
+                <div class="task-item done">
+                    <div class="task-checkbox">✓</div>
+                    <div class="task-content">
+                        <div class="task-title">Warlock Dreadsteed & Paladin Charger Quests</div>
+                        <div class="task-desc">Automated Dire Maul / Stratholme ritual summon and quest item gathering.</div>
+                        <a href="file:///root/Desktop/mangos/server/server/src/modules/Bots/playerbot/strategy/actions/ClassEpicQuestAction.cpp" class="file-link">ClassEpicQuestAction.cpp</a>
+                    </div>
+                </div>
+                <div class="task-item done">
+                    <div class="task-checkbox">✓</div>
+                    <div class="task-content">
+                        <div class="task-title">Hunter Rhok'delar & Priest Anathema Quests</div>
+                        <div class="task-desc">Solo demon hunting tactics and Balance of Light and Dark escort defense in EPL.</div>
+                        <a href="file:///root/Desktop/mangos/server/server/src/modules/Bots/playerbot/strategy/actions/ClassEpicQuestAction.cpp" class="file-link">ClassEpicQuestAction.cpp</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 22 -->
+        <div class="phase-card completed" data-category="completed pvp">
+            <div class="phase-header">
+                <div class="phase-title-group">
+                    <span class="phase-number">PHASE 22</span>
+                    <h3 class="phase-title">Outdoor PvP Zones & Faction Buff Control</h3>
+                </div>
+                <span class="badge badge-completed">✓ Completed</span>
+            </div>
+            <div class="task-list">
+                <div class="task-item done">
+                    <div class="task-checkbox">✓</div>
+                    <div class="task-content">
+                        <div class="task-title">Eastern Plaguelands Towers & Silithus Sand</div>
+                        <div class="task-desc">Capturing Crown Guard, Northpass, Eastwall, and Plaguewood towers for Lordaeron's Blessing and gathering Silithyst sand in Silithus.</div>
+                        <a href="file:///root/Desktop/mangos/server/server/src/modules/Bots/playerbot/strategy/actions/OutdoorPvPAction.cpp" class="file-link">OutdoorPvPAction.cpp</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 23 -->
+        <div class="phase-card completed" data-category="completed">
+            <div class="phase-header">
+                <div class="phase-title-group">
+                    <span class="phase-number">PHASE 23</span>
+                    <h3 class="phase-title">World Events & Seasonal Calendar Participation</h3>
+                </div>
+                <span class="badge badge-completed">✓ Completed</span>
+            </div>
+            <div class="task-list">
+                <div class="task-item done">
+                    <div class="task-checkbox">✓</div>
+                    <div class="task-content">
+                        <div class="task-title">Darkmoon Faire & Gurubashi Arena Chest</div>
+                        <div class="task-desc">Bots visit Darkmoon Faire for buffs/tickets and fight in Stranglethorn Vale for the 3-hour Gurubashi Arena Chest.</div>
+                        <a href="file:///root/Desktop/mangos/server/server/src/modules/Bots/playerbot/strategy/actions/WorldEventsAction.cpp" class="file-link">WorldEventsAction.cpp</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 24 -->
+        <div class="phase-card completed" data-category="completed">
+            <div class="phase-header">
+                <div class="phase-title-group">
+                    <span class="phase-number">PHASE 24</span>
+                    <h3 class="phase-title">Profession Crafting & Enchanting Service Engine</h3>
+                </div>
+                <span class="badge badge-completed">✓ Completed</span>
+            </div>
+            <div class="task-list">
+                <div class="task-item done">
+                    <div class="task-checkbox">✓</div>
+                    <div class="task-content">
+                        <div class="task-title">Trade Skill Crafting & Party Enchanting</div>
+                        <div class="task-desc">Bots craft Alchemy potions, Blacksmithing gear, Leatherworking armor, and offer weapon/armor enchants to party members.</div>
+                        <a href="file:///root/Desktop/mangos/server/server/src/modules/Bots/playerbot/strategy/actions/ProfessionServiceAction.cpp" class="file-link">ProfessionServiceAction.cpp</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phase 25 -->
+        <div class="phase-card completed" data-category="completed">
+            <div class="phase-header">
+                <div class="phase-title-group">
+                    <span class="phase-number">PHASE 25</span>
+                    <h3 class="phase-title">Elite & Multi-Phase Escort Quest System</h3>
+                </div>
+                <span class="badge badge-completed">✓ Completed</span>
+            </div>
+            <div class="task-list">
+                <div class="task-item done">
+                    <div class="task-checkbox">✓</div>
+                    <div class="task-content">
+                        <div class="task-title">Open-World Elite Zones & Multi-Phase Escorts</div>
+                        <div class="task-desc">Bots form open-world elite questing groups for Jin'tha'Alor and Stromgarde Keep and protect multi-step escort targets.</div>
+                        <a href="file:///root/Desktop/mangos/server/server/src/modules/Bots/playerbot/strategy/actions/EliteQuestGroupAction.cpp" class="file-link">EliteQuestGroupAction.cpp</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <footer>
+        <p>MaNGOS Zero & Playerbot AI Engine Roadmap • Configured for <code>Vanilla WoW 1.12.1</code></p>
+    </footer>
+</div>
+
+<script>
+    function filterCategory(cat) {
+        const buttons = document.querySelectorAll('.tab-btn');
+        buttons.forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+
+        const cards = document.querySelectorAll('.phase-card');
+        cards.forEach(card => {
+            if (cat === 'all') {
+                card.style.display = 'block';
+            } else {
+                const categories = card.getAttribute('data-category').split(' ');
+                if (categories.includes(cat)) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            }
+        });
+    }
+
+    function searchRoadmap() {
+        const query = document.getElementById('searchInput').value.toLowerCase();
+        const cards = document.querySelectorAll('.phase-card');
+
+        cards.forEach(card => {
+            const text = card.textContent.toLowerCase();
+            if (text.includes(query)) {
+                card.style.display = 'block';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    }
+</script>
+
+</body>
+</html>
