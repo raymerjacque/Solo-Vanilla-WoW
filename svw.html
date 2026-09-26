@@ -414,7 +414,7 @@
         <div class="status-item">
             <div>
                 <div class="status-label">API Server URL</div>
-                <input type="text" id="apiHostInput" onchange="updateApiHost(this.value)" style="background: rgba(0,0,0,0.4); border: 1px solid var(--border-color); color: var(--gold-light); font-family: var(--font-code); font-size: 0.8rem; padding: 4px 8px; border-radius: 6px; width: 220px;" placeholder="http://makululinux.us:8080">
+                <input type="text" id="apiHostInput" onchange="updateApiHost(this.value)" style="background: rgba(0,0,0,0.4); border: 1px solid var(--border-color); color: var(--gold-light); font-family: var(--font-code); font-size: 0.8rem; padding: 4px 8px; border-radius: 6px; width: 220px;" placeholder="http://your-server-ip:8080">
             </div>
         </div>
     </div>
@@ -535,11 +535,7 @@
     function getApiBase() {
         const saved = localStorage.getItem('svw_api_host');
         if (saved && saved.trim()) return saved.trim().replace(/\/+$/, '');
-        
-        if (window.location.hostname && window.location.hostname !== '') {
-            return '';
-        }
-        return 'https://makululinux.us';
+        return '';
     }
 
     function apiUrl(path) {
