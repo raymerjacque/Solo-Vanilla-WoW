@@ -411,6 +411,12 @@
                 <div class="status-val" id="srvChars">-</div>
             </div>
         </div>
+        <div class="status-item">
+            <div>
+                <div class="status-label">API Server URL</div>
+                <input type="text" id="apiHostInput" onchange="updateApiHost(this.value)" style="background: rgba(0,0,0,0.4); border: 1px solid var(--border-color); color: var(--gold-light); font-family: var(--font-code); font-size: 0.8rem; padding: 4px 8px; border-radius: 6px; width: 220px;" placeholder="http://makululinux.us:8080">
+            </div>
+        </div>
     </div>
 
     <!-- Auth Form (Register / Login) -->
@@ -526,18 +532,57 @@
 <script>
     let currentAccount = null;
 
+    function getApiBase() {
+        const saved = localStorage.getItem('svw_api_host');
+        if (saved && saved.trim()) return saved.trim().replace(/\/+$/, '');
+        
+        if (window.location.port === '8080') {
+            return '';
+        }
+        if (window.location.hostname && window.location.hostname !== '') {
+            return `http://${window.location.hostname}:8080`;
+        }
+        return 'http://localhost:8080';
+    }
+
+    function apiUrl(path) {
+        const base = getApiBase();
+        return (base ? base : '') + path;
+    }
+
+    function updateApiHost(val) {
+        if (val && val.trim()) {
+            let host = val.trim().replace(/\/+$/, '');
+            if (!host.startsWith('http://') && !host.startsWith('https://')) {
+                host = 'http://' + host;
+            }
+            localStorage.setItem('svw_api_host', host);
+            document.getElementById('apiHostInput').value = host;
+        } else {
+            localStorage.removeItem('svw_api_host');
+            document.getElementById('apiHostInput').value = getApiBase();
+        }
+        fetchServerInfo();
+    }
+
     async function fetchServerInfo() {
         try {
-            const res = await fetch('/api/server-info');
+            const res = await fetch(apiUrl('/api/server-info'));
             const data = await res.json();
             if (data.success) {
                 document.getElementById('srvStatus').innerText = data.status;
+                document.getElementById('srvStatus').style.color = 'var(--success-color)';
                 document.getElementById('srvName').innerText = data.realm_name;
                 document.getElementById('srvAccounts').innerText = data.total_accounts;
                 document.getElementById('srvChars').innerText = data.total_characters;
+            } else {
+                document.getElementById('srvStatus').innerText = 'ERROR';
+                document.getElementById('srvStatus').style.color = 'var(--danger-color)';
             }
         } catch (e) {
-            console.error(e);
+            console.error('fetchServerInfo error:', e);
+            document.getElementById('srvStatus').innerText = 'OFFLINE';
+            document.getElementById('srvStatus').style.color = 'var(--danger-color)';
         }
     }
 
@@ -546,11 +591,11 @@
         document.getElementById('authAlert').style.display = 'none';
 
         if (tab === 'login') {
-            event.target.classList.add('active');
+            if (event && event.target) event.target.classList.add('active');
             document.getElementById('loginForm').style.display = 'block';
             document.getElementById('registerForm').style.display = 'none';
         } else {
-            event.target.classList.add('active');
+            if (event && event.target) event.target.classList.add('active');
             document.getElementById('loginForm').style.display = 'none';
             document.getElementById('registerForm').style.display = 'block';
         }
@@ -569,7 +614,7 @@
         const password = document.getElementById('loginPassword').value;
 
         try {
-            const res = await fetch('/api/login', {
+            const res = await fetch(apiUrl('/api/login'), {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({username, password})
@@ -584,7 +629,7 @@
                 showAlert('authAlert', data.error, 'danger');
             }
         } catch (err) {
-            showAlert('authAlert', 'Connection error. Ensure backend server is running.', 'danger');
+            showAlert('authAlert', `Connection error to ${getApiBase() || 'server'}. Ensure backend server svw_server.py is running on port 8080!`, 'danger');
         }
     }
 
@@ -595,7 +640,7 @@
         const password = document.getElementById('regPassword').value;
 
         try {
-            const res = await fetch('/api/register', {
+            const res = await fetch(apiUrl('/api/register'), {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({username, email, password})
@@ -609,7 +654,7 @@
                 showAlert('authAlert', data.error, 'danger');
             }
         } catch (err) {
-            showAlert('authAlert', 'Connection error.', 'danger');
+            showAlert('authAlert', `Connection error to ${getApiBase() || 'server'}. Ensure backend server svw_server.py is running on port 8080!`, 'danger');
         }
     }
 
@@ -619,7 +664,7 @@
         const newPassword = document.getElementById('pwdNew').value;
 
         try {
-            const res = await fetch('/api/change-password', {
+            const res = await fetch(apiUrl('/api/change-password'), {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
@@ -656,7 +701,7 @@
 
         // Fetch Characters
         try {
-            const res = await fetch(`/api/characters?account_id=${currentAccount.id}`);
+            const res = await fetch(apiUrl(`/api/characters?account_id=${currentAccount.id}`));
             const data = await res.json();
 
             if (data.success) {
@@ -700,6 +745,13 @@
         document.getElementById('authSection').style.display = 'block';
         document.getElementById('loginForm').reset();
     }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const input = document.getElementById('apiHostInput');
+        if (input) {
+            input.value = getApiBase();
+        }
+    });
 
     fetchServerInfo();
     setInterval(fetchServerInfo, 10000);

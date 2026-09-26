@@ -3,9 +3,11 @@ import os
 import hashlib
 import uuid
 from flask import Flask, request, jsonify, send_from_directory
+from flask_cors import CORS
 import pymysql
 
 app = Flask(__name__, static_folder='.')
+CORS(app)
 
 DB_CONFIG = {
     'host': '127.0.0.1',
