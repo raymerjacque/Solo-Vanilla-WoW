@@ -1173,35 +1173,52 @@ void PlayerbotFactory::InitTradeSkills()
     case CLASS_HUNTER:
     case CLASS_ROGUE:
         firstSkills.push_back(SKILL_SKINNING);
+        firstSkills.push_back(SKILL_MINING);
+        firstSkills.push_back(SKILL_HERBALISM);
         secondSkills.push_back(SKILL_LEATHERWORKING);
+        secondSkills.push_back(SKILL_ENGINEERING);
+        secondSkills.push_back(SKILL_ALCHEMY);
         break;
     default:
+        firstSkills.push_back(SKILL_HERBALISM);
         firstSkills.push_back(SKILL_TAILORING);
         secondSkills.push_back(SKILL_ENCHANTING);
+        secondSkills.push_back(SKILL_ALCHEMY);
+        break;
     }
 
     SetRandomSkill(SKILL_FIRST_AID);
     SetRandomSkill(SKILL_FISHING);
     SetRandomSkill(SKILL_COOKING);
 
-    switch (urand(0, 1))
+    SetRandomSkill(firstSkills[urand(0, firstSkills.size() - 1)]);
+    SetRandomSkill(secondSkills[urand(0, secondSkills.size() - 1)]);
+
+    // Equip tools and learn tracking spells for professions
+    if (bot->HasSkill(SKILL_MINING))
     {
-    case 0:
-        SetRandomSkill(SKILL_HERBALISM);
-        SetRandomSkill(SKILL_ALCHEMY);
-        break;
-    /*case 1:
-        SetRandomSkill(SKILL_HERBALISM);
-        SetRandomSkill(SKILL_INSCRIPTION);
-        break;
-    case 2:
-        SetRandomSkill(SKILL_MINING);
-        SetRandomSkill(SKILL_JEWELCRAFTING);
-        break;*/
-    case 1://3:
-        SetRandomSkill(firstSkills[urand(0, firstSkills.size() - 1)]);
-        SetRandomSkill(secondSkills[urand(0, secondSkills.size() - 1)]);
-        break;
+        bot->learnSpell(2575, false); // Find Minerals
+        bot->StoreNewItemInInventorySlot(2901, 1); // Mining Pick
+    }
+    if (bot->HasSkill(SKILL_SKINNING))
+    {
+        bot->StoreNewItemInInventorySlot(7005, 1); // Skinning Knife
+    }
+    if (bot->HasSkill(SKILL_HERBALISM))
+    {
+        bot->learnSpell(2383, false); // Find Herbs
+    }
+    if (bot->HasSkill(SKILL_BLACKSMITHING))
+    {
+        bot->StoreNewItemInInventorySlot(5956, 1); // Blacksmith Hammer
+    }
+    if (bot->HasSkill(SKILL_ENGINEERING))
+    {
+        bot->StoreNewItemInInventorySlot(6219, 1); // Arclight Spanner
+    }
+    if (bot->HasSkill(SKILL_FISHING))
+    {
+        bot->StoreNewItemInInventorySlot(6256, 1); // Fishing Pole
     }
 }
 
@@ -1218,7 +1235,6 @@ void PlayerbotFactory::UpdateTradeSkills()
 
 void PlayerbotFactory::InitSkills()
 {
-    uint32 maxValue = level * 5;
     SetRandomSkill(SKILL_DEFENSE);
     SetRandomSkill(SKILL_SWORDS);
     SetRandomSkill(SKILL_AXES);
@@ -1260,7 +1276,6 @@ void PlayerbotFactory::InitSkills()
     uint32 skillLevel = bot->getLevel() < 40 ? 0 : 1;
     switch (bot->getClass())
     {
-    //case CLASS_DEATH_KNIGHT:
     case CLASS_WARRIOR:
     case CLASS_PALADIN:
         bot->SetSkill(SKILL_PLATE_MAIL, skillLevel, skillLevel);
@@ -1274,9 +1289,9 @@ void PlayerbotFactory::InitSkills()
 void PlayerbotFactory::SetRandomSkill(uint16 id)
 {
     uint32 maxValue = level * 5;
-    uint32 curValue = urand(maxValue - level, maxValue);
-    bot->SetSkill(id, curValue, maxValue);
-
+    if (maxValue > 300) maxValue = 300;
+    if (maxValue < 1) maxValue = 1;
+    bot->SetSkill(id, maxValue, maxValue);
 }
 
 void PlayerbotFactory::InitAvailableSpells()
