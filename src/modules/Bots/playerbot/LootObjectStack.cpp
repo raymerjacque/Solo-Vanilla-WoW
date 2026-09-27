@@ -93,6 +93,10 @@ void LootObject::Refresh(Player* bot, ObjectGuid guid)
         LockEntry const *lockInfo = sLockStore.LookupEntry(lockId);
         if (!lockInfo)
         {
+            if (go->GetGoType() == GAMEOBJECT_TYPE_CHEST)
+            {
+                this->guid = guid;
+            }
             return;
         }
 
@@ -116,6 +120,10 @@ void LootObject::Refresh(Player* bot, ObjectGuid guid)
                 }
                 break;
             default:
+                if (go->GetGoType() == GAMEOBJECT_TYPE_CHEST)
+                {
+                    this->guid = guid;
+                }
                 break;
             }
         }
@@ -196,6 +204,12 @@ bool LootObject::IsLootPossible(Player* bot)
 
 bool LootObjectStack::Add(ObjectGuid guid)
 {
+    LootObject loot(bot, guid);
+    if (!loot.IsEmpty() && !loot.IsLootPossible(bot))
+    {
+        return false;
+    }
+
     if (!availableLoot.insert(guid).second)
     {
         return false;

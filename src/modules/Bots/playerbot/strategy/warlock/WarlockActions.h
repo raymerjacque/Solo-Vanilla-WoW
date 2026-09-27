@@ -98,7 +98,7 @@ namespace ai
             if (!CastBuffSpellAction::isUseful())
                 return false;
 
-            if (ai->HasSpell(697)) // Summon Voidwalker
+            if (bot->HasSpell(697)) // Summon Voidwalker
             {
                 Group* group = bot->GetGroup();
                 if (!group || group->GetMembersCount() <= 1)

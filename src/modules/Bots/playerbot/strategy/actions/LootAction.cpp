@@ -105,6 +105,10 @@ bool OpenLootAction::DoLoot(LootObject& lootObject)
         }
 
         bot->GetMotionMaster()->Clear();
+        WorldPacket* const packetgouse = new WorldPacket(CMSG_GAMEOBJ_USE, 8);
+        *packetgouse << lootObject.guid;
+        bot->GetSession()->QueuePacket(packetgouse);
+
         WorldPacket* const packet = new WorldPacket(CMSG_LOOT, 8);
         *packet << lootObject.guid;
         bot->GetSession()->QueuePacket(packet);

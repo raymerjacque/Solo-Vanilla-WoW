@@ -349,10 +349,15 @@ bool MoveRandomAction::Execute(Event event)
         list<ObjectGuid> gos = AI_VALUE(list<ObjectGuid>, "nearest game objects");
         for (list<ObjectGuid>::iterator i = gos.begin(); i != gos.end(); i++)
         {
-            target = ai->GetGameObject(*i);
-
-            if (target && bot->GetDistance(target) > sPlayerbotAIConfig.tooCloseDistance)
+            GameObject* go = ai->GetGameObject(*i);
+            if (go && bot->GetDistance(go) > sPlayerbotAIConfig.tooCloseDistance)
             {
+                LootObject loot(bot, *i);
+                if (!loot.IsEmpty() && !loot.IsLootPossible(bot))
+                {
+                    continue;
+                }
+                target = go;
                 break;
             }
         }
