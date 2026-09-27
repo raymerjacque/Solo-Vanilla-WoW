@@ -17,6 +17,16 @@
 #include <iomanip>
 #include <algorithm>
 
+AiChatService::AiChatService()
+{
+    curl_global_init(CURL_GLOBAL_ALL);
+}
+
+AiChatService::~AiChatService()
+{
+    curl_global_cleanup();
+}
+
 static const char* GetRaceName(uint8 race)
 {
     switch (race)

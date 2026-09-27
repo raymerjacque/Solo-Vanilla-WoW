@@ -57,8 +57,8 @@ public:
     void Update();
 
 private:
-    AiChatService() = default;
-    ~AiChatService() = default;
+    AiChatService();
+    ~AiChatService();
 
     std::string BuildSystemPrompt(Player* bot, Player* owner);
     std::string BuildGroupSystemPrompt(Player* bot, const std::string& groupKey);

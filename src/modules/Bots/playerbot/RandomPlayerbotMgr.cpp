@@ -216,7 +216,10 @@ bool RandomPlayerbotMgr::ProcessBot(uint32 bot)
             sLog.outDetail("Reviving dead bot %d", bot);
             SetEventValue(bot, "dead", 0, 0);
             SetEventValue(bot, "revive", 0, 0);
-            RandomTeleport(player, player->GetMapId(), player->GetPositionX(), player->GetPositionY(), player->GetPositionZ());
+            player->ResurrectPlayer(1.0f, false);
+            player->SpawnCorpseBones();
+            player->SaveToDB();
+            RandomTeleportForLevel(player);
             return true;
         }
 

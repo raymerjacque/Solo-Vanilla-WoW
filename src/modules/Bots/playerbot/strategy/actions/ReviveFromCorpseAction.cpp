@@ -3,6 +3,7 @@
 #include "ReviveFromCorpseAction.h"
 #include "../../PlayerbotFactory.h"
 #include "../../PlayerbotAIConfig.h"
+#include "../../RandomPlayerbotMgr.h"
 
 using namespace ai;
 
@@ -47,6 +48,10 @@ bool ReviveFromCorpseAction::Execute(Event event)
     if (master && master->IsInWorld() && master != bot)
     {
         bot->TeleportTo(master->GetMapId(), master->GetPositionX(), master->GetPositionY(), master->GetPositionZ(), master->GetOrientation());
+    }
+    else if (sRandomPlayerbotMgr.IsRandomBot(bot))
+    {
+        sRandomPlayerbotMgr.RandomTeleportForLevel(bot);
     }
 
     context->GetValue<Unit*>("current target")->Set(NULL);
