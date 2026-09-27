@@ -97,20 +97,18 @@ bool OpenLootAction::DoLoot(LootObject& lootObject)
     }
 
     GameObject* go = ai->GetGameObject(lootObject.guid);
-    if (go && bot->GetDistance(go) > INTERACTION_DISTANCE)
+    if (go)
     {
-        return false;
-    }
+        if (bot->GetDistance(go) > INTERACTION_DISTANCE)
+        {
+            return false;
+        }
 
-    bot->GetMotionMaster()->Clear();
-    if (lootObject.skillId == SKILL_MINING)
-    {
-        return bot->HasSkill(SKILL_MINING) ? ai->CastSpell(MINING, bot) : false;
-    }
-
-    if (lootObject.skillId == SKILL_HERBALISM)
-    {
-        return bot->HasSkill(SKILL_HERBALISM) ? ai->CastSpell(HERB_GATHERING, bot) : false;
+        bot->GetMotionMaster()->Clear();
+        WorldPacket* const packet = new WorldPacket(CMSG_LOOT, 8);
+        *packet << lootObject.guid;
+        bot->GetSession()->QueuePacket(packet);
+        return true;
     }
 
     uint32 spellId = GetOpeningSpell(lootObject);

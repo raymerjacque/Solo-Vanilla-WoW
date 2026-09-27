@@ -114,27 +114,34 @@ float MovementAction::GetFollowAngle()
 {
     Player* master = GetMaster();
     Group* group = master ? master->GetGroup() : bot->GetGroup();
+    uint32 lowGuid = bot->GetObjectGuid().GetCounter();
+    float guidJitter = ((float)(lowGuid % 60) - 30.0f) * (M_PI / 180.0f);
+
     if (!group)
     {
-        return 0.0f;
+        return (float)(lowGuid % 360) * (M_PI / 180.0f);
     }
+
+    uint32 totalMembers = group->GetMembersCount();
+    if (totalMembers <= 1)
+        totalMembers = 2;
 
     int index = 1;
     for (GroupReference *ref = group->GetFirstMember(); ref; ref = ref->next())
     {
-        if( ref->getSource() == master)
+        if (master && ref->getSource() == master)
         {
             continue;
         }
 
-        if( ref->getSource() == bot)
+        if (ref->getSource() == bot)
         {
-            return 2 * M_PI / (group->GetMembersCount() -1) * index;
+            return (2 * M_PI / (totalMembers - 1)) * index + guidJitter;
         }
 
         index++;
     }
-    return 0;
+    return (float)(lowGuid % 360) * (M_PI / 180.0f);
 }
 
 bool MovementAction::IsMovingAllowed(Unit* target)
@@ -224,7 +231,11 @@ bool MovementAction::Follow(Unit* target, float distance, float angle)
         distance += angle;
     }
 
-    if (bot->GetDistance(target) <= sPlayerbotAIConfig.followDistance)
+    uint32 lowGuid = bot->GetObjectGuid().GetCounter();
+    float botDistOffset = (float)(lowGuid % 5) * 0.7f + 1.0f;
+    float botDistance = distance + botDistOffset;
+
+    if (bot->GetDistance(target) <= botDistance * 0.7f)
     {
         return false;
     }
@@ -240,7 +251,7 @@ bool MovementAction::Follow(Unit* target, float distance, float angle)
         ai->InterruptSpell();
     }
 
-    mm.MoveFollow(target, distance, angle);
+    mm.MoveFollow(target, botDistance, angle);
 
     AI_VALUE(LastMovement&, "last movement").Set(target);
     return true;
