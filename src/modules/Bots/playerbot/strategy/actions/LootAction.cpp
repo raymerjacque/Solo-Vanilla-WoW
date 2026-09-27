@@ -105,6 +105,13 @@ bool OpenLootAction::DoLoot(LootObject& lootObject)
         }
 
         bot->GetMotionMaster()->Clear();
+
+        uint32 spellId = GetOpeningSpell(lootObject, go);
+        if (spellId)
+        {
+            return ai->CastSpell(spellId, bot);
+        }
+
         WorldPacket* const packetgouse = new WorldPacket(CMSG_GAMEOBJ_USE, 8);
         *packetgouse << lootObject.guid;
         bot->GetSession()->QueuePacket(packetgouse);
@@ -191,19 +198,19 @@ bool OpenLootAction::CanOpenLock(LootObject& lootObject, const SpellEntry* pSpel
     {
         if (pSpellInfo->Effect[effIndex] != SPELL_EFFECT_OPEN_LOCK && pSpellInfo->Effect[effIndex] != SPELL_EFFECT_SKINNING)
         {
-            return false;
+            continue;
         }
 
         uint32 lockId = go->GetGOInfo()->GetLockId();
         if (!lockId)
         {
-            return false;
+            continue;
         }
 
         LockEntry const *lockInfo = sLockStore.LookupEntry(lockId);
         if (!lockInfo)
         {
-            return false;
+            continue;
         }
 
         bool reqKey = false;                                    // some locks not have reqs
@@ -243,6 +250,11 @@ bool OpenLootAction::CanOpenLock(LootObject& lootObject, const SpellEntry* pSpel
 
 bool OpenLootAction::CanOpenLock(uint32 skillId, uint32 reqSkillValue)
 {
+    if (!bot->HasSkill(skillId))
+    {
+        return false;
+    }
+
     uint32 skillValue = bot->GetSkillValue(skillId);
     return skillValue >= reqSkillValue || !reqSkillValue;
 }
