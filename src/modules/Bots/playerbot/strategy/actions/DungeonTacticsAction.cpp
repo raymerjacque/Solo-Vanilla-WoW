@@ -187,6 +187,13 @@ bool DungeonTacticsAction::Execute(Event event)
 
         if (bossDeadNearby)
         {
+            // Party Victory Reactions: Cheer, dance, emote, chat
+            static const char* victoryMsgs[] = { "gg!", "Great kill everyone!", "nice pull!", "ty for group!", "Awesome run!" };
+            int msgIdx = urand(0, 4);
+            bot->Say(victoryMsgs[msgIdx], LANG_UNIVERSAL);
+            uint32 emoteId = (urand(0, 2) == 0) ? 1 : ((urand(0, 1) == 0) ? 10 : 66); // Cheer (1), Dance (10), Salute (66)
+            bot->HandleEmoteCommand(emoteId);
+
             bool portalActive = false;
             list<ObjectGuid> gos = AI_VALUE(list<ObjectGuid>, "nearest game objects");
             for (list<ObjectGuid>::iterator i = gos.begin(); i != gos.end(); ++i)
@@ -205,8 +212,7 @@ bool DungeonTacticsAction::Execute(Event event)
                 if (bot->HasSpell(portalSpell))
                 {
                     bot->CastSpell(bot, portalSpell, false);
-                    bot->Say("Great run everyone! Opening a portal back to the city!", LANG_UNIVERSAL);
-                    bot->HandleEmoteCommand(1); // EMOTE_ONESHOT_CHEER
+                    bot->Say("Opening a portal back to the city!", LANG_UNIVERSAL);
                     return true;
                 }
             }

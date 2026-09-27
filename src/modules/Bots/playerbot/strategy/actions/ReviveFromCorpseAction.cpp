@@ -13,6 +13,17 @@ bool ReviveFromCorpseAction::Execute(Event event)
         return false;
     }
 
+    if (bot->HasAura(20707) || bot->HasAura(20740))
+    {
+        bot->ResurrectPlayer(1.0f, false);
+        bot->SpawnCorpseBones();
+        bot->SaveToDB();
+        bot->Say("Resurrected via Soulstone!", LANG_UNIVERSAL);
+        context->GetValue<Unit*>("current target")->Set(NULL);
+        bot->SetSelectionGuid(ObjectGuid());
+        return true;
+    }
+
     Corpse* corpse = bot->GetCorpse();
     if (!corpse)
     {

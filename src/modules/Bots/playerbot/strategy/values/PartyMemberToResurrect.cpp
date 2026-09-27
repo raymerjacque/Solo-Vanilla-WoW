@@ -29,7 +29,7 @@ public:
     virtual bool Check(Unit* unit)
     {
         Player* player = dynamic_cast<Player*>(unit);
-        return player && player->GetDeathState() == CORPSE && !value->IsTargetOfSpellCast(player, predicate);
+        return player && !player->IsAlive() && !value->IsTargetOfSpellCast(player, predicate);
     }
 
 private:
