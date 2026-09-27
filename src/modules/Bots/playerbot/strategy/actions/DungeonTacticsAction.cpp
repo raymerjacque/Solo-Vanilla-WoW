@@ -88,8 +88,130 @@ bool DungeonTacticsAction::Execute(Event event)
         }
     }
 
+    // Warlock Soulstone on Healer Rule:
+    if (group && bot->getClass() == CLASS_WARLOCK && !bot->IsInCombat() && !bot->IsNonMeleeSpellCasted(false))
+    {
+        Player* healer = NULL;
+        for (GroupReference* itr = group->GetFirstMember(); itr != NULL; itr = itr->next())
+        {
+            Player* member = itr->getSource();
+            if (member && member->IsInWorld() && member->IsAlive() && ai->IsHeal(member))
+            {
+                if (!member->HasAura(20707) && !member->HasAura(20740))
+                {
+                    healer = member;
+                    break;
+                }
+            }
+        }
+
+        if (healer)
+        {
+            static uint32 ssItems[] = { 16896, 16895, 16893, 16892, 5232 };
+            Item* ssItem = NULL;
+            for (int i = 0; i < 5; ++i)
+            {
+                if (bot->HasItemCount(ssItems[i], 1))
+                {
+                    ssItem = bot->GetItemByEntry(ssItems[i]);
+                    break;
+                }
+            }
+
+            if (ssItem)
+            {
+                ItemPrototype const* proto = ssItem->GetProto();
+                if (proto && proto->Spells[0].SpellId)
+                {
+                    bot->CastSpell(healer, proto->Spells[0].SpellId, true);
+                    bot->DestroyItemCount(ssItem->GetEntry(), 1, true);
+                    string msg = "Placed Soulstone on " + string(healer->GetName()) + "!";
+                    bot->Say(msg, LANG_UNIVERSAL);
+                    return true;
+                }
+            }
+            else
+            {
+                uint32 conjureSpell = 0;
+                if (bot->getLevel() >= 60 && bot->HasSpell(20757)) conjureSpell = 20757;
+                else if (bot->getLevel() >= 50 && bot->HasSpell(20756)) conjureSpell = 20756;
+                else if (bot->getLevel() >= 40 && bot->HasSpell(20755)) conjureSpell = 20755;
+                else if (bot->getLevel() >= 30 && bot->HasSpell(20752)) conjureSpell = 20752;
+                else if (bot->getLevel() >= 18 && bot->HasSpell(693)) conjureSpell = 693;
+
+                if (conjureSpell)
+                {
+                    bot->CastSpell(bot, conjureSpell, false);
+                    return true;
+                }
+            }
+        }
+    }
+
     if (!bot->GetMap()->IsDungeon())
         return false;
+
+    // Mage End-of-Dungeon Portal Rule:
+    if (group && bot->getClass() == CLASS_MAGE && bot->getLevel() >= 40 && !bot->IsInCombat())
+    {
+        bool bossDeadNearby = false;
+        ObjectGuid selGuid = bot->GetSelectionGuid();
+        if (selGuid)
+        {
+            Unit* selected = ai->GetUnit(selGuid);
+            if (selected && selected->IsDead() && selected->GetTypeId() == TYPEID_UNIT)
+            {
+                Creature* c = (Creature*)selected;
+                if (c->GetCreatureInfo() && c->GetCreatureInfo()->Rank >= 1)
+                    bossDeadNearby = true;
+            }
+        }
+
+        if (!bossDeadNearby)
+        {
+            list<ObjectGuid> targets = AI_VALUE(list<ObjectGuid>, "possible targets");
+            for (list<ObjectGuid>::iterator itr = targets.begin(); itr != targets.end(); ++itr)
+            {
+                Unit* u = ai->GetUnit(*itr);
+                if (u && u->IsDead() && u->GetTypeId() == TYPEID_UNIT)
+                {
+                    Creature* c = (Creature*)u;
+                    if (c->GetCreatureInfo() && c->GetCreatureInfo()->Rank >= 1)
+                    {
+                        bossDeadNearby = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (bossDeadNearby)
+        {
+            bool portalActive = false;
+            list<ObjectGuid> gos = AI_VALUE(list<ObjectGuid>, "nearest game objects");
+            for (list<ObjectGuid>::iterator i = gos.begin(); i != gos.end(); ++i)
+            {
+                GameObject* go = ai->GetGameObject(*i);
+                if (go && go->GetGoType() == GAMEOBJECT_TYPE_SPELLCASTER)
+                {
+                    portalActive = true;
+                    break;
+                }
+            }
+
+            if (!portalActive && !bot->IsNonMeleeSpellCasted(false))
+            {
+                uint32 portalSpell = (bot->GetTeam() == ALLIANCE) ? 11416 : 11419;
+                if (bot->HasSpell(portalSpell))
+                {
+                    bot->CastSpell(bot, portalSpell, false);
+                    bot->Say("Great run everyone! Opening a portal back to the city!", LANG_UNIVERSAL);
+                    bot->HandleEmoteCommand(1); // EMOTE_ONESHOT_CHEER
+                    return true;
+                }
+            }
+        }
+    }
 
     uint32 mapId = bot->GetMapId();
 
