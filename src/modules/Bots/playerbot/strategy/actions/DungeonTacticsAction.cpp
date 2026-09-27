@@ -13,6 +13,34 @@ bool DungeonTacticsAction::Execute(Event event)
     if (!bot || !bot->IsInWorld() || bot->IsDead() || !bot->GetMap()->IsDungeon())
         return false;
 
+    // Global Dungeon Rule: Tank checks Healer mana before pulling
+    Group* group = bot->GetGroup();
+    if (group && ai->IsTank() && !bot->IsInCombat())
+    {
+        for (GroupReference* itr = group->GetFirstMember(); itr != NULL; itr = itr->next())
+        {
+            Player* member = itr->getSource();
+            if (member && member->IsInWorld() && member->IsAlive() && member->GetPowerType() == POWER_MANA)
+            {
+                uint8 cls = member->getClass();
+                if (cls == CLASS_PRIEST || cls == CLASS_PALADIN || cls == CLASS_SHAMAN || cls == CLASS_DRUID)
+                {
+                    uint32 maxMana = member->GetMaxPower(POWER_MANA);
+                    if (maxMana > 0)
+                    {
+                        uint32 curMana = member->GetPower(POWER_MANA);
+                        if ((curMana * 100) / maxMana < 35)
+                        {
+                            // Tank waits for healer to drink/regen mana before starting next pull
+                            bot->GetMotionMaster()->Clear();
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     uint32 mapId = bot->GetMapId();
 
     // 1. BLACKROCK DEPTHS (BRD - Map 230)
