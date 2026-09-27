@@ -1,5 +1,6 @@
 #include "botpch.h"
 #include "../../playerbot.h"
+#include "../../AiFactory.h"
 #include "DungeonTacticsAction.h"
 #include "GridNotifiers.h"
 #include "GridNotifiersImpl.h"
@@ -10,10 +11,10 @@ using namespace ai;
 bool DungeonTacticsAction::Execute(Event event)
 {
     Player* bot = ai->GetBot();
-    if (!bot || !bot->IsInWorld() || bot->IsDead() || !bot->GetMap()->IsDungeon())
+    if (!bot || !bot->IsInWorld() || bot->IsDead())
         return false;
 
-    // Global Dungeon Rule: Tank checks Healer mana before pulling
+    // Global Dungeon/Group Rule: Tank checks Healer mana before pulling
     Group* group = bot->GetGroup();
     if (group && ai->IsTank(bot) && !bot->IsInCombat())
     {
@@ -40,6 +41,55 @@ bool DungeonTacticsAction::Execute(Event event)
             }
         }
     }
+
+    // Druid Group Role Adaptation Rule:
+    // No other tank -> Bear Tank
+    // Has tank, no healer -> Restoration Healer
+    // Has tank and healer -> Cat DPS (if Feral spec) or Caster DPS (if Balance/Resto)
+    if (group && bot->getClass() == CLASS_DRUID && !bot->IsInCombat())
+    {
+        bool hasOtherTank = false;
+        bool hasOtherHealer = false;
+        for (GroupReference* itr = group->GetFirstMember(); itr != NULL; itr = itr->next())
+        {
+            Player* member = itr->getSource();
+            if (member && member != bot && member->IsInWorld() && member->IsAlive())
+            {
+                if (ai->IsTank(member))
+                    hasOtherTank = true;
+                if (ai->IsHeal(member))
+                    hasOtherHealer = true;
+            }
+        }
+
+        if (!hasOtherTank)
+        {
+            if (!ai->HasStrategy("bear", BOT_STATE_COMBAT))
+                ai->ChangeStrategy("+bear,-cat,-caster,-heal", BOT_STATE_COMBAT);
+        }
+        else if (!hasOtherHealer)
+        {
+            if (!ai->HasStrategy("heal", BOT_STATE_COMBAT))
+                ai->ChangeStrategy("+heal,-bear,-cat,-caster", BOT_STATE_COMBAT);
+        }
+        else
+        {
+            int spec = AiFactory::GetPlayerSpecTab(bot);
+            if (spec == 1) // Feral spec
+            {
+                if (!ai->HasStrategy("cat", BOT_STATE_COMBAT))
+                    ai->ChangeStrategy("+cat,-bear,-caster,-heal", BOT_STATE_COMBAT);
+            }
+            else
+            {
+                if (!ai->HasStrategy("caster", BOT_STATE_COMBAT))
+                    ai->ChangeStrategy("+caster,-bear,-cat,-heal", BOT_STATE_COMBAT);
+            }
+        }
+    }
+
+    if (!bot->GetMap()->IsDungeon())
+        return false;
 
     uint32 mapId = bot->GetMapId();
 

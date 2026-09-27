@@ -12,6 +12,8 @@ public:
     {
         creators["fel armor"] = &fel_armor;
         creators["demon armor"] = &demon_armor;
+        creators["summon imp"] = &summon_imp;
+        creators["summon voidwalker"] = &summon_voidwalker;
     }
 private:
     static ActionNode* fel_armor(PlayerbotAI* ai)
@@ -26,6 +28,20 @@ private:
         return new ActionNode ("demon armor",
             /*P*/ NULL,
             /*A*/ NextAction::array(0, new NextAction("demon skin"), NULL),
+            /*C*/ NULL);
+    }
+    static ActionNode* summon_imp(PlayerbotAI* ai)
+    {
+        return new ActionNode ("summon imp",
+            /*P*/ NULL,
+            /*A*/ NextAction::array(0, new NextAction("summon voidwalker"), new NextAction("summon felguard"), NULL),
+            /*C*/ NULL);
+    }
+    static ActionNode* summon_voidwalker(PlayerbotAI* ai)
+    {
+        return new ActionNode ("summon voidwalker",
+            /*P*/ NULL,
+            /*A*/ NextAction::array(0, new NextAction("summon imp"), NULL),
             /*C*/ NULL);
     }
 };

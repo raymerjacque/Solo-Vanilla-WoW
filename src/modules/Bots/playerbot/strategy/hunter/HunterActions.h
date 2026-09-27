@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../actions/GenericActions.h"
+#include "../../PlayerbotFactory.h"
 
 namespace ai
 {
@@ -74,6 +75,15 @@ namespace ai
     {
     public:
         CastCallPetAction(PlayerbotAI* ai) : CastBuffSpellAction(ai, "call pet") {}
+        virtual bool Execute(Event event)
+        {
+            if (bot->getClass() == CLASS_HUNTER && bot->getLevel() >= 10 && !bot->GetPet())
+            {
+                PlayerbotFactory factory(bot, bot->getLevel());
+                factory.InitPet();
+            }
+            return CastBuffSpellAction::Execute(event);
+        }
     };
 
     class CastMendPetAction : public CastAuraSpellAction

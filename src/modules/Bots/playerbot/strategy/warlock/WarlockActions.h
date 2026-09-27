@@ -69,12 +69,57 @@ namespace ai
     {
     public:
         CastSummonVoidwalkerAction(PlayerbotAI* ai) : CastBuffSpellAction(ai, "summon voidwalker") {}
+        virtual bool isUseful()
+        {
+            if (!CastBuffSpellAction::isUseful())
+                return false;
+
+            Group* group = bot->GetGroup();
+            if (!group || group->GetMembersCount() <= 1)
+                return true; // Solo -> Voidwalker is useful!
+
+            Group::MemberSlotList const& slots = group->GetMemberSlots();
+            for (Group::member_citerator itr = slots.begin(); itr != slots.end(); ++itr)
+            {
+                Player* member = sObjectMgr.GetPlayer(itr->guid);
+                if (member && member != bot && member->IsInWorld() && member->IsAlive() && ai->IsTank(member))
+                    return false; // Group has a tank -> prefer Imp
+            }
+            return true; // Group has no tank -> Voidwalker useful to tank
+        }
     };
 
     class CastSummonImpAction : public CastBuffSpellAction
     {
     public:
         CastSummonImpAction(PlayerbotAI* ai) : CastBuffSpellAction(ai, "summon imp") {}
+        virtual bool isUseful()
+        {
+            if (!CastBuffSpellAction::isUseful())
+                return false;
+
+            if (ai->HasSpell(697)) // Summon Voidwalker
+            {
+                Group* group = bot->GetGroup();
+                if (!group || group->GetMembersCount() <= 1)
+                    return false; // Solo -> prefer Voidwalker
+
+                bool hasOtherTank = false;
+                Group::MemberSlotList const& slots = group->GetMemberSlots();
+                for (Group::member_citerator itr = slots.begin(); itr != slots.end(); ++itr)
+                {
+                    Player* member = sObjectMgr.GetPlayer(itr->guid);
+                    if (member && member != bot && member->IsInWorld() && member->IsAlive() && ai->IsTank(member))
+                    {
+                        hasOtherTank = true;
+                        break;
+                    }
+                }
+                if (!hasOtherTank)
+                    return false; // No tank -> prefer Voidwalker
+            }
+            return true;
+        }
     };
 
     class CastSummonSuccubusAction : public CastBuffSpellAction
