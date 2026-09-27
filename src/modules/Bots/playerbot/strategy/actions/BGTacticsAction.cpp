@@ -32,23 +32,6 @@ bool BGTacticsAction::Execute(Event event)
     {
         bool carriesFlag = bot->HasAura(23333) || bot->HasAura(23335);
 
-        // Check for nearby dropped flag or flag stand gameobject within 12m to pick up/return
-        list<GameObject*> flags;
-        MaNGOS::GameObjectLastSearcher<MaNGOS::WorldObjectLastSearcher> searcher(bot, flags, 12.0f);
-        Cell::VisitAllObjects((const WorldObject*)bot, searcher, 12.0f);
-        for (list<GameObject*>::iterator it = flags.begin(); it != flags.end(); ++it)
-        {
-            GameObject* go = *it;
-            if (go && (go->GetEntry() == 179785 || go->GetEntry() == 179786 || go->GetEntry() == 179830 || go->GetEntry() == 179831))
-            {
-                if (bot->GetDistance(go) > 2.0f && !bot->IsBeingTeleported())
-                {
-                    bot->GetMotionMaster()->MovePoint(0, go->GetPositionX(), go->GetPositionY(), go->GetPositionZ());
-                    return true;
-                }
-            }
-        }
-
         if (carriesFlag)
         {
             // Path back to home flag room with squad offset
