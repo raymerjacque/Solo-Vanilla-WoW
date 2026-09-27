@@ -15,7 +15,7 @@ bool DungeonTacticsAction::Execute(Event event)
 
     // Global Dungeon Rule: Tank checks Healer mana before pulling
     Group* group = bot->GetGroup();
-    if (group && ai->IsTank() && !bot->IsInCombat())
+    if (group && ai->IsTank(bot) && !bot->IsInCombat())
     {
         for (GroupReference* itr = group->GetFirstMember(); itr != NULL; itr = itr->next())
         {
