@@ -50,6 +50,90 @@ static const char* GetClassName(uint8 cls)
     }
 }
 
+static std::string GetBotSpecName(Player* bot)
+{
+    uint8 cls = bot->getClass();
+    static const char* specNames[12][3] = {
+        {"", "", ""},
+        {"Arms", "Fury", "Protection"},              // Warrior = 1
+        {"Holy", "Protection", "Retribution"},        // Paladin = 2
+        {"Beast Mastery", "Marksmanship", "Survival"}, // Hunter = 3
+        {"Assassination", "Combat", "Subtlety"},      // Rogue = 4
+        {"Discipline", "Holy", "Shadow"},              // Priest = 5
+        {"", "", ""},
+        {"Elemental", "Enhancement", "Restoration"},    // Shaman = 7
+        {"Arcane", "Fire", "Frost"},                  // Mage = 8
+        {"Affliction", "Demonology", "Destruction"},    // Warlock = 9
+        {"", "", ""},
+        {"Balance", "Feral", "Restoration"}            // Druid = 11
+    };
+
+    if (cls < 12 && specNames[cls][0][0] != '\0')
+    {
+        uint32 specIdx = (bot->GetGUIDLow() % 3);
+        return std::string(specNames[cls][specIdx]) + " " + GetClassName(cls);
+    }
+    return GetClassName(cls);
+}
+
+static std::string GetBotProfessions(Player* bot)
+{
+    static const std::vector<std::pair<uint32, std::string>> profs = {
+        {SKILL_MINING, "Mining"},
+        {SKILL_HERBALISM, "Herbalism"},
+        {SKILL_SKINNING, "Skinning"},
+        {SKILL_BLACKSMITHING, "Blacksmithing"},
+        {SKILL_LEATHERWORKING, "Leatherworking"},
+        {SKILL_ALCHEMY, "Alchemy"},
+        {SKILL_ENGINEERING, "Engineering"},
+        {SKILL_TAILORING, "Tailoring"},
+        {SKILL_ENCHANTING, "Enchanting"},
+        {SKILL_FISHING, "Fishing"},
+        {SKILL_COOKING, "Cooking"},
+        {SKILL_FIRST_AID, "First Aid"}
+    };
+
+    std::ostringstream ss;
+    bool first = true;
+    for (const auto& pair : profs)
+    {
+        if (bot->HasSkill(pair.first))
+        {
+            if (!first) ss << ", ";
+            uint32 val = bot->GetSkillValue(pair.first);
+            uint32 maxVal = bot->GetMaxSkillValue(pair.first);
+            ss << pair.second << " (" << val << "/" << maxVal << ")";
+            first = false;
+        }
+    }
+    return first ? "None" : ss.str();
+}
+
+static std::string GetBotCurrentActivity(Player* bot)
+{
+    if (bot->IsInCombat())
+    {
+        std::string victimName = bot->getVictim() ? bot->getVictim()->GetName() : "enemies";
+        return std::string("In combat fighting ") + victimName;
+    }
+
+    if (bot->IsMounted())
+        return "Mounted and traveling";
+
+    if (!bot->IsStandState())
+        return "Resting / sitting in tavern or town";
+
+    if (bot->GetGroup())
+    {
+        PlayerbotAI* ai = bot->GetPlayerbotAI();
+        if (ai && ai->GetMaster())
+            return std::string("Following party leader ") + ai->GetMaster()->GetName();
+        return "Adventuring with party";
+    }
+
+    return "Solo adventuring";
+}
+
 static size_t CurlWriteCallback(void* contents, size_t size, size_t nmemb, void* userp)
 {
     ((std::string*)userp)->append((char*)contents, size * nmemb);
@@ -148,6 +232,7 @@ std::string AiChatService::BuildSystemPrompt(Player* bot, Player* owner)
     std::string botName = bot->GetName();
     std::string botRace = GetRaceName(bot->getRace());
     std::string botClass = GetClassName(bot->getClass());
+    std::string botSpec = GetBotSpecName(bot);
     uint32 botLevel = bot->getLevel();
     std::string botFaction = (bot->GetTeam() == ALLIANCE) ? "Alliance" : "Horde";
 
@@ -156,17 +241,48 @@ std::string AiChatService::BuildSystemPrompt(Player* bot, Player* owner)
     if (area && area->area_name[0])
         zoneName = area->area_name[0];
 
+    std::string areaName = "";
+    AreaTableEntry const* subArea = sAreaStore.LookupEntry(bot->GetAreaId());
+    if (subArea && subArea->area_name[0])
+        areaName = subArea->area_name[0];
+
     std::string guildName = "None";
     if (Guild* guild = sGuildMgr.GetGuildById(bot->GetGuildId()))
         guildName = guild->GetName();
+
+    std::string professions = GetBotProfessions(bot);
+    std::string activity = GetBotCurrentActivity(bot);
 
     std::string groupStatus = "Solo";
     std::string masterName = "None";
     if (bot->GetGroup())
     {
-        groupStatus = "Grouped";
+        groupStatus = "In a party";
         if (bot->GetPlayerbotAI() && bot->GetPlayerbotAI()->GetMaster())
             masterName = bot->GetPlayerbotAI()->GetMaster()->GetName();
+    }
+
+    std::vector<std::string> activeQuests;
+    for (uint8 slot = 0; slot < MAX_QUEST_LOG_SIZE; ++slot)
+    {
+        uint32 questId = bot->GetQuestSlotQuestId(slot);
+        if (questId)
+        {
+            Quest const* qInfo = sObjectMgr.GetQuestTemplate(questId);
+            if (qInfo)
+                activeQuests.push_back(qInfo->GetTitle());
+        }
+    }
+    std::string questList = "None";
+    if (!activeQuests.empty())
+    {
+        std::ostringstream qss;
+        for (size_t i = 0; i < std::min<size_t>(activeQuests.size(), 5); ++i)
+        {
+            if (i > 0) qss << ", ";
+            qss << activeQuests[i];
+        }
+        questList = qss.str();
     }
 
     std::string playerName = owner->GetName();
@@ -175,17 +291,26 @@ std::string AiChatService::BuildSystemPrompt(Player* bot, Player* owner)
     uint32 playerLevel = owner->getLevel();
 
     std::ostringstream ss;
-    ss << "You are an AI playerbot named " << botName << " in World of Warcraft Vanilla (1.12.1). "
-       << "Character info: Level " << botLevel << " " << botRace << " " << botClass << " (" << botFaction << "). "
-       << "Current Location: " << zoneName << ". "
-       << "Guild: " << guildName << ". "
-       << "Group Status: " << groupStatus << " (Leader: " << masterName << "). "
-       << "You are communicating in whisper with human player " << playerName
-       << " (Level " << playerLevel << " " << playerRace << " " << playerClass << "). "
-       << "Rules: "
-       << "1. Respond like a friendly real gamer in WoW chat. "
-       << "2. Keep your response short, natural, and gamer-like (1 short sentence, max 15 words). "
-       << "3. NEVER include any quotes, markdown, asterisks, thinking tags (<think>), or stage directions.";
+    ss << "You are an AI playerbot named " << botName << " in World of Warcraft Vanilla (1.12.1).\n"
+       << "Your Exact Character Profile:\n"
+       << "- Name: " << botName << "\n"
+       << "- Level: " << botLevel << "\n"
+       << "- Race: " << botRace << "\n"
+       << "- Class & Spec: " << botSpec << "\n"
+       << "- Faction: " << botFaction << "\n"
+       << "- Guild: " << guildName << "\n"
+       << "- Location: " << zoneName << (areaName.empty() ? "" : " (" + areaName + ")") << "\n"
+       << "- Professions: " << professions << "\n"
+       << "- Current Activity: " << activity << "\n"
+       << "- Group Status: " << groupStatus << (masterName == "None" ? "" : " (Leader: " + masterName + ")") << "\n"
+       << "- Active Quests: " << questList << "\n\n"
+       << "You are whispering in chat with human player " << playerName
+       << " (Level " << playerLevel << " " << playerRace << " " << playerClass << ").\n"
+       << "Rules:\n"
+       << "1. Respond like a friendly real gamer in WoW chat.\n"
+       << "2. Use your exact character info above (e.g. if asked your level, say " << botLevel << "; if asked your location, say " << zoneName << "; if asked your spec/professions, use exact details above).\n"
+       << "3. Keep your response short, natural, and gamer-like (1 to 2 short sentences, max 20 words).\n"
+       << "4. NEVER include any quotes, markdown, asterisks, thinking tags (<think>), or stage directions.";
 
     return ss.str();
 }
@@ -197,6 +322,7 @@ std::string AiChatService::BuildGroupSystemPrompt(Player* bot, const std::string
     std::string botName = bot->GetName();
     std::string botRace = GetRaceName(bot->getRace());
     std::string botClass = GetClassName(bot->getClass());
+    std::string botSpec = GetBotSpecName(bot);
     uint32 botLevel = bot->getLevel();
 
     std::string zoneName = "Azeroth";
@@ -204,15 +330,18 @@ std::string AiChatService::BuildGroupSystemPrompt(Player* bot, const std::string
     if (area && area->area_name[0])
         zoneName = area->area_name[0];
 
+    std::string professions = GetBotProfessions(bot);
+    std::string activity = GetBotCurrentActivity(bot);
+
     std::ostringstream ss;
-    ss << "You are an AI playerbot named " << botName << " in World of Warcraft Vanilla (1.12.1). "
-       << "Character info: Level " << botLevel << " " << botRace << " " << botClass << ". "
-       << "Location: " << zoneName << ". "
-       << "You are hanging out with a group of fellow players/bots in public. "
-       << "Rules: "
-       << "1. Continue the casual group chat naturally as " << botName << ". "
-       << "2. Keep your line very short (1 sentence, max 12 words), casual, and gamer-like. "
-       << "3. Do NOT repeat previous lines. Add new comments about quests, dungeons, gear, resting, or WoW lore. "
+    ss << "You are an AI playerbot named " << botName << " in World of Warcraft Vanilla (1.12.1).\n"
+       << "Your Profile: Level " << botLevel << " " << botRace << " " << botSpec << " in " << zoneName << ".\n"
+       << "Professions: " << professions << ". Current Activity: " << activity << ".\n"
+       << "You are hanging out with a group of fellow players/bots in public chat.\n"
+       << "Rules:\n"
+       << "1. Continue the casual group chat naturally as " << botName << ".\n"
+       << "2. Keep your line very short (1 sentence, max 12 words), casual, and gamer-like.\n"
+       << "3. Do NOT repeat previous lines. Add new comments about quests, dungeons, gear, resting, or WoW lore.\n"
        << "4. NEVER use quotes around your line, no markdown, no asterisks, no stage directions.";
 
     return ss.str();
@@ -444,7 +573,15 @@ void AiChatService::Update()
             }
             else
             {
-                bot->Whisper("I'm with you, lead the way!", LANG_UNIVERSAL, owner->GetObjectGuid());
+                std::string zoneName = "Azeroth";
+                AreaTableEntry const* area = sAreaStore.LookupEntry(bot->GetZoneId());
+                if (area && area->area_name[0]) zoneName = area->area_name[0];
+
+                std::ostringstream fss;
+                fss << "I'm a level " << bot->getLevel() << " " << GetRaceName(bot->getRace()) << " " << GetClassName(bot->getClass())
+                    << " currently in " << zoneName << ". Lead the way!";
+
+                bot->Whisper(fss.str(), LANG_UNIVERSAL, owner->GetObjectGuid());
             }
         }
         else if (item.channel == AI_CHAT_SAY)
