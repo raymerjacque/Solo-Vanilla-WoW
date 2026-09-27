@@ -395,6 +395,7 @@ PlayerbotMgr::~PlayerbotMgr()
 void PlayerbotMgr::UpdateAIInternal(uint32 elapsed)
 {
     SetNextCheckDelay(sPlayerbotAIConfig.reactDelay);
+    sAiChatService.ProcessGroupChatTick();
     sAiChatService.Update();
 }
 

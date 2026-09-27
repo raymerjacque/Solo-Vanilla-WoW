@@ -38,6 +38,7 @@
 #include "SpellAuras.h"
 #include "Language.h"
 #include "Util.h"
+#include "../../modules/Bots/playerbot/AiChatService.h"
 #include "GridNotifiersImpl.h"
 #include "CellImpl.h"
 #ifdef ENABLE_ELUNA
@@ -220,6 +221,7 @@ void WorldSession::HandleMessagechatOpcode(WorldPacket& recv_data)
                 }
 #endif /* ENABLE_ELUNA */
                  GetPlayer()->Say(msg, lang);
+                 sAiChatService.ProcessNearbyPlayerSay(GetPlayer(), msg);
             }
             else if (type == CHAT_MSG_EMOTE)
             {

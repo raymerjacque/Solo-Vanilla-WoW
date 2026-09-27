@@ -128,6 +128,12 @@ std::string AiChatService::ExtractContent(const std::string& json)
             result = result.substr(thinkStart + 7);
     }
 
+    // Strip starting/ending quotes if wrapped
+    if (result.size() >= 2 && result.front() == '"' && result.back() == '"')
+    {
+        result = result.substr(1, result.size() - 2);
+    }
+
     // Trim leading and trailing whitespace
     size_t first = result.find_first_not_of(" \t\n\r");
     if (first == std::string::npos) return "";
@@ -163,38 +169,6 @@ std::string AiChatService::BuildSystemPrompt(Player* bot, Player* owner)
             masterName = bot->GetPlayerbotAI()->GetMaster()->GetName();
     }
 
-    std::string targetName = "None";
-    if (Unit* victim = bot->getVictim())
-        targetName = victim->GetName();
-    else if (bot->GetSelectionGuid())
-    {
-        if (Unit* sel = sObjectAccessor.GetUnit(*bot, bot->GetSelectionGuid()))
-            targetName = sel->GetName();
-    }
-
-    std::vector<std::string> activeQuests;
-    for (uint8 slot = 0; slot < MAX_QUEST_LOG_SIZE; ++slot)
-    {
-        uint32 questId = bot->GetQuestSlotQuestId(slot);
-        if (questId)
-        {
-            Quest const* qInfo = sObjectMgr.GetQuestTemplate(questId);
-            if (qInfo)
-                activeQuests.push_back(qInfo->GetTitle());
-        }
-    }
-    std::string questList = "None";
-    if (!activeQuests.empty())
-    {
-        std::ostringstream qss;
-        for (size_t i = 0; i < activeQuests.size(); ++i)
-        {
-            if (i > 0) qss << ", ";
-            qss << activeQuests[i];
-        }
-        questList = qss.str();
-    }
-
     std::string playerName = owner->GetName();
     std::string playerRace = GetRaceName(owner->getRace());
     std::string playerClass = GetClassName(owner->getClass());
@@ -206,15 +180,40 @@ std::string AiChatService::BuildSystemPrompt(Player* bot, Player* owner)
        << "Current Location: " << zoneName << ". "
        << "Guild: " << guildName << ". "
        << "Group Status: " << groupStatus << " (Leader: " << masterName << "). "
-       << "Target: " << targetName << ". "
-       << "Active Quests: " << questList << ". "
-       << "You are communicating in chat with human player " << playerName
+       << "You are communicating in whisper with human player " << playerName
        << " (Level " << playerLevel << " " << playerRace << " " << playerClass << "). "
        << "Rules: "
        << "1. Respond like a friendly real gamer in WoW chat. "
-       << "2. Keep your response short, natural, and gamer-like (1 to 2 short sentences). "
-       << "3. NEVER include any markdown, asterisks, thinking tags (<think>), or stage directions. "
-       << "4. If asked to follow or group up, reply enthusiastically like 'I'm with you, lead the way!' or 'Let's do this!'";
+       << "2. Keep your response short, natural, and gamer-like (1 short sentence, max 15 words). "
+       << "3. NEVER include any quotes, markdown, asterisks, thinking tags (<think>), or stage directions.";
+
+    return ss.str();
+}
+
+std::string AiChatService::BuildGroupSystemPrompt(Player* bot, const std::string& groupKey)
+{
+    if (!bot) return "";
+
+    std::string botName = bot->GetName();
+    std::string botRace = GetRaceName(bot->getRace());
+    std::string botClass = GetClassName(bot->getClass());
+    uint32 botLevel = bot->getLevel();
+
+    std::string zoneName = "Azeroth";
+    AreaTableEntry const* area = sAreaStore.LookupEntry(bot->GetZoneId());
+    if (area && area->area_name[0])
+        zoneName = area->area_name[0];
+
+    std::ostringstream ss;
+    ss << "You are an AI playerbot named " << botName << " in World of Warcraft Vanilla (1.12.1). "
+       << "Character info: Level " << botLevel << " " << botRace << " " << botClass << ". "
+       << "Location: " << zoneName << ". "
+       << "You are hanging out with a group of fellow players/bots in public. "
+       << "Rules: "
+       << "1. Continue the casual group chat naturally as " << botName << ". "
+       << "2. Keep your line very short (1 sentence, max 12 words), casual, and gamer-like. "
+       << "3. Do NOT repeat previous lines. Add new comments about quests, dungeons, gear, resting, or WoW lore. "
+       << "4. NEVER use quotes around your line, no markdown, no asterisks, no stage directions.";
 
     return ss.str();
 }
@@ -228,24 +227,119 @@ bool AiChatService::ProcessPlayerChat(Player* bot, Player* owner, const std::str
     ObjectGuid ownerGuid = owner->GetObjectGuid();
     std::string systemPrompt = BuildSystemPrompt(bot, owner);
 
-    // Launch async thread to call external LLM API without blocking game loop
     std::thread([this, botGuid, ownerGuid, systemPrompt, message]()
     {
-        PerformApiRequest(botGuid, ownerGuid, systemPrompt, message);
+        PerformApiRequest(botGuid, ownerGuid, systemPrompt, message, AI_CHAT_WHISPER);
     }).detach();
 
     return true;
 }
 
-void AiChatService::PerformApiRequest(ObjectGuid botGuid, ObjectGuid ownerGuid, const std::string& systemPrompt, const std::string& userMessage)
+void AiChatService::ProcessNearbyPlayerSay(Player* player, const std::string& message)
 {
-    sLog.outString("AiChatService: Performing API request for bot %s to owner %s message: '%s'", botGuid.GetString().c_str(), ownerGuid.GetString().c_str(), userMessage.c_str());
-    std::string key = botGuid.GetString() + "_" + ownerGuid.GetString();
+    if (!player || message.empty() || !player->IsInWorld())
+        return;
+
+    std::string groupKey = "Area_" + std::to_string(player->GetZoneId()) + "_" + std::to_string(player->GetAreaId());
+
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        auto& history = m_groupHistory[groupKey];
+        history.push_back({player->GetName(), "user", message});
+        if (history.size() > 10)
+        {
+            history.erase(history.begin(), history.begin() + (history.size() - 10));
+        }
+    }
+
+    // Find nearest bot within 15 yards to reply in public SAY
+    Player* responderBot = nullptr;
+    float minDist = 15.0f;
+
+    sObjectAccessor.DoForAllPlayers([&](Player* b) {
+        if (!b || b == player || !b->IsInWorld() || !b->GetPlayerbotAI())
+            return;
+
+        float dist = player->GetDistance(b);
+        if (dist <= minDist)
+        {
+            minDist = dist;
+            responderBot = b;
+        }
+    });
+
+    if (responderBot)
+    {
+        std::string systemPrompt = BuildGroupSystemPrompt(responderBot, groupKey);
+        ObjectGuid botGuid = responderBot->GetObjectGuid();
+        ObjectGuid playerGuid = player->GetObjectGuid();
+
+        std::thread([this, botGuid, playerGuid, systemPrompt, message, groupKey]()
+        {
+            PerformApiRequest(botGuid, playerGuid, systemPrompt, message, AI_CHAT_SAY, groupKey);
+        }).detach();
+    }
+}
+
+void AiChatService::ProcessGroupChatTick()
+{
+    time_t now = time(0);
+    if (now - m_lastGroupScanTime < 15)
+        return;
+
+    m_lastGroupScanTime = now;
+
+    // Cluster online random bots by area
+    std::map<std::string, std::vector<Player*>> areaBotClusters;
+
+    sObjectAccessor.DoForAllPlayers([&](Player* b) {
+        if (!b || !b->IsInWorld() || !b->GetPlayerbotAI())
+            return;
+
+        std::string groupKey = "Area_" + std::to_string(b->GetZoneId()) + "_" + std::to_string(b->GetAreaId());
+        areaBotClusters[groupKey].push_back(b);
+    });
+
+    for (auto& pair : areaBotClusters)
+    {
+        std::string groupKey = pair.first;
+        auto& bots = pair.second;
+
+        if (bots.size() < 2)
+            continue;
+
+        time_t lastTalk = m_groupLastTalkTime[groupKey];
+        uint32 delay = urand(20, 45);
+        if (now - lastTalk < delay)
+            continue;
+
+        m_groupLastTalkTime[groupKey] = now;
+
+        // Select a random bot to speak next in the group
+        uint32 speakerIdx = urand(0, bots.size() - 1);
+        Player* speakerBot = bots[speakerIdx];
+
+        std::string systemPrompt = BuildGroupSystemPrompt(speakerBot, groupKey);
+        ObjectGuid botGuid = speakerBot->GetObjectGuid();
+
+        std::thread([this, botGuid, systemPrompt, groupKey]()
+        {
+            PerformApiRequest(botGuid, ObjectGuid(), systemPrompt, "Say the next line in the casual group conversation.", AI_CHAT_SAY, groupKey);
+        }).detach();
+    }
+}
+
+void AiChatService::PerformApiRequest(ObjectGuid botGuid, ObjectGuid ownerGuid, const std::string& systemPrompt, const std::string& userMessage, AiChatChannel channel, const std::string& groupKey)
+{
+    std::string key = (channel == AI_CHAT_WHISPER) ? (botGuid.GetString() + "_" + ownerGuid.GetString()) : groupKey;
 
     std::vector<ChatMessageTurn> historyCopy;
     {
         std::lock_guard<std::mutex> lock(m_mutex);
-        historyCopy = m_conversationHistory[key];
+        if (channel == AI_CHAT_WHISPER)
+            historyCopy = m_conversationHistory[key];
+        else
+            historyCopy = m_groupHistory[groupKey];
     }
 
     std::ostringstream jsonStream;
@@ -256,13 +350,14 @@ void AiChatService::PerformApiRequest(ObjectGuid botGuid, ObjectGuid ownerGuid, 
 
     for (const auto& turn : historyCopy)
     {
-        jsonStream << ",\n    {\"role\": \"" << turn.role << "\", \"content\": \"" << EscapeJson(turn.content) << "\"}";
+        std::string content = turn.senderName.empty() ? turn.content : (turn.senderName + ": " + turn.content);
+        jsonStream << ",\n    {\"role\": \"" << turn.role << "\", \"content\": \"" << EscapeJson(content) << "\"}";
     }
 
     jsonStream << ",\n    {\"role\": \"user\", \"content\": \"" << EscapeJson(userMessage) << "\"}\n"
                << "  ],\n"
-               << "  \"temperature\": 0.7,\n"
-               << "  \"max_tokens\": 120\n"
+               << "  \"temperature\": 0.8,\n"
+               << "  \"max_tokens\": 60\n"
                << "}";
 
     std::string payload = jsonStream.str();
@@ -298,36 +393,19 @@ void AiChatService::PerformApiRequest(ObjectGuid botGuid, ObjectGuid ownerGuid, 
             replyText = ExtractContent(responseBuffer);
             if (!replyText.empty())
             {
-                sLog.outString("AiChatService: Successfully received reply from API: '%s'", replyText.c_str());
                 success = true;
             }
-            else
-            {
-                sLog.outError("AiChatService: Failed to parse content from response: %s", responseBuffer.c_str());
-            }
-        }
-        else
-        {
-            sLog.outError("AiChatService: CURL failed with code %d (%s)", (int)res, curl_easy_strerror(res));
         }
     }
 
     std::lock_guard<std::mutex> lock(m_mutex);
     if (success)
     {
-        auto& history = m_conversationHistory[key];
-        history.push_back({"user", userMessage});
-        history.push_back({"assistant", replyText});
-        if (history.size() > 10)
-        {
-            history.erase(history.begin(), history.begin() + (history.size() - 10));
-        }
-
-        m_pendingReplies.push_back({botGuid, ownerGuid, replyText, false});
+        m_pendingReplies.push_back({botGuid, ownerGuid, replyText, false, channel, groupKey});
     }
     else
     {
-        m_pendingReplies.push_back({botGuid, ownerGuid, "", true});
+        m_pendingReplies.push_back({botGuid, ownerGuid, "", true, channel, groupKey});
     }
 }
 
@@ -346,25 +424,43 @@ void AiChatService::Update()
     for (const auto& item : repliesToProcess)
     {
         Player* bot = sObjectMgr.GetPlayer(item.botGuid);
-        Player* owner = sObjectMgr.GetPlayer(item.ownerGuid);
-
-        if (!bot || !owner || !bot->IsInWorld() || !owner->IsInWorld())
+        if (!bot || !bot->IsInWorld())
             continue;
 
-        PlayerbotAI* botAi = bot->GetPlayerbotAI();
-        if (!botAi)
-            continue;
-
-        if (!item.isFallback && !item.replyText.empty())
+        if (item.channel == AI_CHAT_WHISPER)
         {
-            sLog.outString("AiChatService: Bot %s whispering reply to %s: '%s'", bot->GetName(), owner->GetName(), item.replyText.c_str());
-            bot->Whisper(item.replyText, LANG_UNIVERSAL, owner->GetObjectGuid());
+            Player* owner = sObjectMgr.GetPlayer(item.ownerGuid);
+            if (!owner || !owner->IsInWorld())
+                continue;
+
+            if (!item.isFallback && !item.replyText.empty())
+            {
+                bot->Whisper(item.replyText, LANG_UNIVERSAL, owner->GetObjectGuid());
+
+                std::lock_guard<std::mutex> lock(m_mutex);
+                std::string key = item.botGuid.GetString() + "_" + item.ownerGuid.GetString();
+                auto& history = m_conversationHistory[key];
+                history.push_back({bot->GetName(), "assistant", item.replyText});
+            }
+            else
+            {
+                bot->Whisper("I'm with you, lead the way!", LANG_UNIVERSAL, owner->GetObjectGuid());
+            }
         }
-        else
+        else if (item.channel == AI_CHAT_SAY)
         {
-            sLog.outString("AiChatService: Bot %s sending fallback reply to %s", bot->GetName(), owner->GetName());
-            // Fallback response if API fails
-            bot->Whisper("I'm with you, lead the way!", LANG_UNIVERSAL, owner->GetObjectGuid());
+            if (!item.isFallback && !item.replyText.empty())
+            {
+                bot->Say(item.replyText, LANG_UNIVERSAL);
+
+                std::lock_guard<std::mutex> lock(m_mutex);
+                auto& history = m_groupHistory[item.groupKey];
+                history.push_back({bot->GetName(), "assistant", item.replyText});
+                if (history.size() > 10)
+                {
+                    history.erase(history.begin(), history.begin() + (history.size() - 10));
+                }
+            }
         }
     }
 }
