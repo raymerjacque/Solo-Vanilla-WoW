@@ -42,11 +42,8 @@ bool DungeonTacticsAction::Execute(Event event)
         }
     }
 
-    // Druid Group Role Adaptation Rule:
-    // No other tank -> Bear Tank
-    // Has tank, no healer -> Restoration Healer
-    // Has tank and healer -> Cat DPS (if Feral spec) or Caster DPS (if Balance/Resto)
-    if (group && bot->getClass() == CLASS_DRUID && !bot->IsInCombat())
+    // Druid Group Role Adaptation Rule: Only enforce in dungeons/instances
+    if (group && bot->getClass() == CLASS_DRUID && !bot->IsInCombat() && bot->GetMap()->IsDungeon())
     {
         bool hasOtherTank = false;
         bool hasOtherHealer = false;

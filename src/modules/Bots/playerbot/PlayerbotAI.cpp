@@ -822,9 +822,10 @@ bool PlayerbotAI::IsHeal(Player* player)
     switch (player->getClass())
     {
     case CLASS_PRIEST:
-        return true;
+    case CLASS_PALADIN:
+    case CLASS_SHAMAN:
     case CLASS_DRUID:
-        return HasAnyAuraOf(player, "tree of life form", NULL);
+        return true;
     }
     return false;
 }

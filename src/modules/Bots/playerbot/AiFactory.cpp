@@ -205,7 +205,14 @@ void AiFactory::AddDefaultCombatStrategies(Player* player, PlayerbotAI* const fa
             }
             else
             {
-                engine->addStrategies("bear", "tank aoe", "threat", "flee", NULL);
+                if (player->getLevel() >= 20)
+                {
+                    engine->addStrategies("cat", "threat", "flee", NULL);
+                }
+                else
+                {
+                    engine->addStrategies("bear", "tank aoe", "threat", "flee", NULL);
+                }
             }
             break;
         case CLASS_HUNTER:

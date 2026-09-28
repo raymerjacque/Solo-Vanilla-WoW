@@ -49,7 +49,7 @@ bool ReviveFromCorpseAction::Execute(Event event)
     {
         bot->TeleportTo(master->GetMapId(), master->GetPositionX(), master->GetPositionY(), master->GetPositionZ(), master->GetOrientation());
     }
-    else if (sRandomPlayerbotMgr.IsRandomBot(bot))
+    else
     {
         sRandomPlayerbotMgr.RandomTeleportForLevel(bot);
     }
