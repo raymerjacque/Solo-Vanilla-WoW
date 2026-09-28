@@ -65,7 +65,7 @@ void GenericDruidNonCombatStrategy::InitTriggers(std::list<TriggerNode*> &trigge
 
     triggers.push_back(new TriggerNode(
         "party member dead",
-        NextAction::array(0, new NextAction("revive", 22.0f), NULL)));
+        NextAction::array(0, new NextAction("rebirth", 22.0f), NULL)));
 
     triggers.push_back(new TriggerNode(
         "low mana",
