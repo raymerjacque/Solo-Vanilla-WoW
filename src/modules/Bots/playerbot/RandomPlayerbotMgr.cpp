@@ -785,11 +785,7 @@ void RandomPlayerbotMgr::OnPlayerLogout(Player* player)
 
     if (!player->GetPlayerbotAI())
     {
-        vector<Player*>::iterator i = find(players.begin(), players.end(), player);
-        if (i != players.end())
-        {
-            players.erase(i);
-        }
+        players.erase(std::remove(players.begin(), players.end(), player), players.end());
         UpdateAIInternal(0);
     }
 }
@@ -831,7 +827,10 @@ void RandomPlayerbotMgr::OnPlayerLogin(Player* player)
         }
     }
 
-    players.push_back(player);
+    if (std::find(players.begin(), players.end(), player) == players.end())
+    {
+        players.push_back(player);
+    }
     UpdateAIInternal(0);
 }
 

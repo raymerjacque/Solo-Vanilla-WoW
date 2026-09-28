@@ -496,6 +496,7 @@ void AiChatService::PerformApiRequest(ObjectGuid botGuid, ObjectGuid ownerGuid, 
     jsonStream << ",\n    {\"role\": \"user\", \"content\": \"" << EscapeJson(userMessage) << "\"}\n"
                << "  ],\n"
                << "  \"temperature\": 0.8,\n"
+               << "  \"stream\": false,\n"
                << "  \"max_tokens\": 60\n"
                << "}";
 
