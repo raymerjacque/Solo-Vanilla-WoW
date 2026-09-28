@@ -109,6 +109,11 @@ void PlayerbotHolder::OnBotLogin(Player * const bot)
             if (!sPlayerbotAIConfig.IsInRandomAccountList(account))
             {
                 groupValid = true;
+                Player* humanMaster = sObjectMgr.GetPlayer(member);
+                if (humanMaster && !humanMaster->GetPlayerbotAI())
+                {
+                    ai->SetMaster(humanMaster);
+                }
                 break;
             }
         }

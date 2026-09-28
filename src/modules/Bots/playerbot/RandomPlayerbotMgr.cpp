@@ -207,7 +207,7 @@ bool RandomPlayerbotMgr::ProcessBot(uint32 bot)
             sLog.outDetail("Setting dead flag for bot %d", bot);
             uint32 randomTime = urand(sPlayerbotAIConfig.minRandomBotReviveTime, sPlayerbotAIConfig.maxRandomBotReviveTime);
             SetEventValue(bot, "dead", 1, randomTime);
-            SetEventValue(bot, "revive", 1, randomTime - 60);
+            SetEventValue(bot, "revive", 1, randomTime > 5 ? randomTime - 5 : randomTime / 2);
             return false;
         }
 
@@ -831,7 +831,6 @@ void RandomPlayerbotMgr::OnPlayerLogin(Player* player)
     {
         players.push_back(player);
     }
-    UpdateAIInternal(0);
 }
 
 Player* RandomPlayerbotMgr::GetRandomPlayer()
