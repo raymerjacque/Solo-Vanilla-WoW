@@ -502,38 +502,41 @@ void AiChatService::PerformApiRequest(ObjectGuid botGuid, ObjectGuid ownerGuid, 
     std::string payload = jsonStream.str();
     std::string responseBuffer;
 
-    CURL* curl = curl_easy_init();
     bool success = false;
     std::string replyText;
 
-    if (curl)
+    std::string apiKey = sPlayerbotAIConfig.aiApiKey;
+    if (!apiKey.empty() && apiKey != "YOUR_API_KEY_HERE")
     {
-        std::string apiKey = sPlayerbotAIConfig.aiApiKey;
-        if (apiKey.empty()) apiKey = "YOUR_API_KEY_HERE";
-        std::string authHeader = "Authorization: Bearer " + apiKey;
-
-        struct curl_slist* headers = NULL;
-        headers = curl_slist_append(headers, "Content-Type: application/json");
-        headers = curl_slist_append(headers, authHeader.c_str());
-
-        curl_easy_setopt(curl, CURLOPT_URL, "https://api.makululinux.us/v1/chat/completions");
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
-        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload.c_str());
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CurlWriteCallback);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &responseBuffer);
-        curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
-
-        CURLcode res = curl_easy_perform(curl);
-        curl_easy_cleanup(curl);
-        curl_slist_free_all(headers);
-
-        if (res == CURLE_OK)
+        CURL* curl = curl_easy_init();
+        if (curl)
         {
-            replyText = ExtractContent(responseBuffer);
-            if (!replyText.empty())
+            std::string authHeader = "Authorization: Bearer " + apiKey;
+
+            struct curl_slist* headers = NULL;
+            headers = curl_slist_append(headers, "Content-Type: application/json");
+            headers = curl_slist_append(headers, authHeader.c_str());
+
+            curl_easy_setopt(curl, CURLOPT_URL, "https://api.makululinux.us/v1/chat/completions");
+            curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, payload.c_str());
+            curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CurlWriteCallback);
+            curl_easy_setopt(curl, CURLOPT_WRITEDATA, &responseBuffer);
+            curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
+
+            CURLcode res = curl_easy_perform(curl);
+
+            if (res == CURLE_OK)
             {
-                success = true;
+                replyText = ExtractContent(responseBuffer);
+                if (!replyText.empty())
+                {
+                    success = true;
+                }
             }
+
+            curl_slist_free_all(headers);
+            curl_easy_cleanup(curl);
         }
     }
 
