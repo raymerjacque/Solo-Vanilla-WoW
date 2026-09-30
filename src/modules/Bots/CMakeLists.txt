@@ -17,6 +17,9 @@
 #
 
 set(BOT_SRCS
+    npcbot/NpcBotDefines.h
+    npcbot/NpcBotMgr.h
+    npcbot/NpcBotMgr.cpp
     playerbot/AiFactory.cpp
     playerbot/AiFactory.h
     playerbot/ChatFilter.cpp

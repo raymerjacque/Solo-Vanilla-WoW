@@ -35,6 +35,7 @@
 #include "SocialMgr.h"
 #include "Util.h"
 #include "../../modules/Bots/playerbot/playerbot.h"
+#include "NpcBotMgr.h"
 
 /* differences from off:
     -you can uninvite yourself - is is useful
@@ -77,6 +78,12 @@ void WorldSession::HandleGroupInviteOpcode(WorldPacket& recv_data)
     if (!player || player == GetPlayer())
     {
         SendPartyResult(PARTY_OP_INVITE, membername, ERR_BAD_PLAYER_NAME_S);
+        return;
+    }
+
+    if (sNpcBotMgr.IsNpcBot(player))
+    {
+        SendPartyResult(PARTY_OP_INVITE, membername, ERR_IGNORING_YOU_S);
         return;
     }
 

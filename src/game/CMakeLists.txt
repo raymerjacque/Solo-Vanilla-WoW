@@ -94,10 +94,13 @@ file(GLOB Playerbot_Source ${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot/*.cpp 
 source_group("Player Bot" FILES ${Playerbot_Source})
 file(GLOB AHbot_Source ${CMAKE_SOURCE_DIR}/src/modules/Bots/ahbot/*.cpp ${CMAKE_SOURCE_DIR}/src/modules/Bots/ahbot/*.h)
 source_group("AH Bot" FILES ${AHbot_Source})
+file(GLOB Npcbot_Source ${CMAKE_SOURCE_DIR}/src/modules/Bots/npcbot/*.cpp ${CMAKE_SOURCE_DIR}/src/modules/Bots/npcbot/*.h)
+source_group("NPC Bot" FILES ${Npcbot_Source})
 
 set(SRC_GRP_BOTS
     ${Playerbot_Source}
     ${AHbot_Source}
+    ${Npcbot_Source}
 )
 #Strategy files
 file(GLOB Playerbot_Strategy ${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot/strategy/*.cpp ${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot/strategy/*.h)
@@ -260,6 +263,7 @@ target_include_directories(game
             ${CMAKE_SOURCE_DIR}/src/modules/Bots
             ${CMAKE_SOURCE_DIR}/src/modules/Bots/playerbot
             ${CMAKE_SOURCE_DIR}/src/modules/Bots/ahbot
+            ${CMAKE_SOURCE_DIR}/src/modules/Bots/npcbot
         >
 )
 

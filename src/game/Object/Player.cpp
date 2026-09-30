@@ -58,6 +58,7 @@
 #include "BattleGround/BattleGroundAV.h"
 #include "OutdoorPvP/OutdoorPvP.h"
 #include "Chat.h"
+#include "NpcBotMgr.h"
 #include "Database/DatabaseImpl.h"
 #include "Spell.h"
 #include "ScriptMgr.h"
@@ -7375,6 +7376,8 @@ void Player::UpdateZone(uint32 newZone, uint32 newArea)
 #ifdef ENABLE_ELUNA
     sEluna->OnUpdateZone(this, newZone, newArea);
 #endif /* ENABLE_ELUNA */
+
+    sNpcBotMgr.OnPlayerUpdateZone(this, newZone, newArea);
 
     m_zoneUpdateId    = newZone;
     m_zoneUpdateTimer = ZONE_UPDATE_INTERVAL;

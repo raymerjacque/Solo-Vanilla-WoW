@@ -58,6 +58,7 @@
 #include "MoveMap.h"
 #include "GameEventMgr.h"
 #include "PoolManager.h"
+#include "NpcBotMgr.h"
 #include "Database/DatabaseImpl.h"
 #include "GridNotifiersImpl.h"
 #include "CellImpl.h"
@@ -1436,6 +1437,7 @@ void World::SetInitialWorldSettings()
     ///- Initialize static helper structures
     AIRegistry::Initialize();
     Player::InitVisibleBits();
+    sNpcBotMgr.Initialize();
 
     ///- Initialize MapManager
     sLog.outString("Starting Map System");
@@ -1712,6 +1714,7 @@ void World::Update(uint32 diff)
 #ifdef ENABLE_PLAYERBOTS
     sRandomPlayerbotMgr.UpdateAI(diff);
     sRandomPlayerbotMgr.UpdateSessions(diff);
+    sNpcBotMgr.Update(diff);
 #endif
 
     /// <li> Handle session updates
