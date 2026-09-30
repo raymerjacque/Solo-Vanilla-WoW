@@ -8,6 +8,8 @@
 #include <unordered_set>
 #include <vector>
 
+#include <mutex>
+
 #include "WorldHandlers/LoginQueryHolder.h"
 #include "WorldSession.h"
 #include "Database/DatabaseEnv.h"
@@ -57,6 +59,7 @@ private:
     void OnNpcBotLoaded(Player* bot, const NpcBotSpot& spot);
     const NpcBotSpot* FindSpot(uint32 spotId) const;
 
+    mutable std::mutex m_lock;
     std::unordered_map<uint32, NpcBotHub> m_hubs; // hubId -> Hub
     std::unordered_map<uint32, std::vector<uint32>> m_zoneToHubs; // zoneId -> vector of hubIds
     std::unordered_map<uint32, std::vector<uint32>> m_areaToHubs; // areaId -> vector of hubIds

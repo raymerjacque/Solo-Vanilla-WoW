@@ -27,11 +27,13 @@ bool NpcBotMgr::IsNpcBot(Player* player) const
 
 bool NpcBotMgr::IsNpcBot(ObjectGuid guid) const
 {
+    std::lock_guard<std::mutex> lock(m_lock);
     return m_npcBotGuids.find(guid) != m_npcBotGuids.end();
 }
 
 void NpcBotMgr::Initialize()
 {
+    std::lock_guard<std::mutex> lock(m_lock);
     m_hubs.clear();
     m_zoneToHubs.clear();
     m_areaToHubs.clear();
@@ -215,6 +217,7 @@ void NpcBotMgr::HandleNpcBotLoginCallback(QueryResult* /*dummy*/, SqlQueryHolder
     Player* bot = botSession->GetPlayer();
     if (!bot || !bot->IsInWorld())
     {
+        delete botSession;
         return;
     }
 
@@ -230,16 +233,7 @@ void NpcBotMgr::OnNpcBotLoaded(Player* bot, const NpcBotSpot& spot)
     if (!bot || !bot->IsInWorld())
         return;
 
-    if (bot->GetMapId() == spot.mapId)
-    {
-        bot->GetMap()->Remove(bot, false);
-        bot->Relocate(spot.x, spot.y, spot.z, spot.o);
-        bot->GetMap()->Add(bot);
-    }
-    else
-    {
-        bot->TeleportTo(spot.mapId, spot.x, spot.y, spot.z, spot.o);
-    }
+    bot->TeleportTo(spot.mapId, spot.x, spot.y, spot.z, spot.o);
 
     if (spot.behavior == NPCBOT_BEHAVIOR_SIT)
     {
@@ -250,42 +244,51 @@ void NpcBotMgr::OnNpcBotLoaded(Player* bot, const NpcBotSpot& spot)
         bot->SetStandState(UNIT_STAND_STATE_STAND);
     }
 
-    m_npcBotGuids.insert(bot->GetObjectGuid());
-    m_spotToBotGuid[spot.spotId] = bot->GetObjectGuid();
+    {
+        std::lock_guard<std::mutex> lock(m_lock);
+        m_npcBotGuids.insert(bot->GetObjectGuid());
+        m_spotToBotGuid[spot.spotId] = bot->GetObjectGuid();
+    }
 
     sLog.outString("NPCBot '%s' (GUID: %u) loaded successfully at spot %u (%s)", bot->GetName(), bot->GetGUIDLow(), spot.spotId, spot.name.c_str());
 }
 
 void NpcBotMgr::DespawnBotForSpot(uint32 spotId)
 {
-    auto sIt = m_spotToBotGuid.find(spotId);
-    if (sIt == m_spotToBotGuid.end())
-        return;
+    ObjectGuid botGuid;
+    {
+        std::lock_guard<std::mutex> lock(m_lock);
+        auto sIt = m_spotToBotGuid.find(spotId);
+        if (sIt == m_spotToBotGuid.end())
+            return;
 
-    ObjectGuid botGuid = sIt->second;
+        botGuid = sIt->second;
+        m_npcBotGuids.erase(botGuid);
+        m_spotToBotGuid.erase(sIt);
+    }
+
     Player* bot = sObjectMgr.GetPlayer(botGuid);
     if (bot && bot->IsInWorld())
     {
         WorldSession* session = bot->GetSession();
-        m_npcBotGuids.erase(botGuid);
-        m_spotToBotGuid.erase(sIt);
         if (session)
         {
             session->LogoutPlayer(true);
             delete session;
         }
     }
-    else
-    {
-        m_npcBotGuids.erase(botGuid);
-        m_spotToBotGuid.erase(sIt);
-    }
 }
 
 void NpcBotMgr::Update(uint32 diff)
 {
+    std::vector<ObjectGuid> guidsCopy;
+    {
+        std::lock_guard<std::mutex> lock(m_lock);
+        guidsCopy.assign(m_npcBotGuids.begin(), m_npcBotGuids.end());
+    }
+
     // Process bot teleport acks
-    for (ObjectGuid guid : m_npcBotGuids)
+    for (ObjectGuid guid : guidsCopy)
     {
         Player* bot = sObjectMgr.GetPlayer(guid);
         if (bot && bot->IsBeingTeleported())
@@ -339,14 +342,22 @@ void NpcBotMgr::Update(uint32 diff)
 
 void NpcBotMgr::UpdateBotBehaviors(uint32 diff)
 {
-    for (ObjectGuid guid : m_npcBotGuids)
+    std::vector<ObjectGuid> guidsCopy;
+    std::unordered_map<uint32, ObjectGuid> spotMapCopy;
+    {
+        std::lock_guard<std::mutex> lock(m_lock);
+        guidsCopy.assign(m_npcBotGuids.begin(), m_npcBotGuids.end());
+        spotMapCopy = m_spotToBotGuid;
+    }
+
+    for (ObjectGuid guid : guidsCopy)
     {
         Player* bot = sObjectMgr.GetPlayer(guid);
         if (!bot || !bot->IsInWorld())
             continue;
 
         // Maintain sit state for SIT behavior bots or combat emotes for DUEL bots
-        for (const auto& sPair : m_spotToBotGuid)
+        for (const auto& sPair : spotMapCopy)
         {
             if (sPair.second == guid)
             {
