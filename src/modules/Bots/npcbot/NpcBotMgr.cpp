@@ -5,6 +5,7 @@
 #include "MapManager.h"
 #include "Log.h"
 #include "World.h"
+#include "ObjectAccessor.h"
 #include "Database/DatabaseEnv.h"
 
 NpcBotMgr::NpcBotMgr() : m_updateTimer(0)
@@ -142,10 +143,14 @@ void NpcBotMgr::DeactivateHub(uint32 hubId)
 
 void NpcBotMgr::SpawnBotForSpot(const NpcBotHub& hub, const NpcBotSpot& spot)
 {
-    // Query available random bot character guid from database
-    QueryResult* result = CharacterDatabase.PQuery("SELECT bot FROM ai_playerbot_random_bots WHERE event = 'randomize' LIMIT 1 OFFSET %u", spot.spotId % 100);
+    // Query available character guid from database
+    QueryResult* result = CharacterDatabase.PQuery("SELECT guid FROM characters LIMIT 1 OFFSET %u", (spot.spotId * 7) % 250);
     if (!result)
-        return;
+    {
+        result = CharacterDatabase.Query("SELECT guid FROM characters LIMIT 1");
+        if (!result)
+            return;
+    }
 
     Field* fields = result->Fetch();
     uint32 lowguid = fields[0].GetUInt32();
@@ -165,11 +170,11 @@ void NpcBotMgr::SpawnBotForSpot(const NpcBotHub& hub, const NpcBotSpot& spot)
 
     if (!bot->IsInWorld())
     {
-        bot->Relocate(spot.x, spot.y, spot.z, spot.o);
-
-        Map* map = sMapMgr.CreateMap(spot.mapId, bot);
+        Map* map = sMapMgr.FindMap(spot.mapId, 0);
         if (map)
         {
+            bot->SetMap(map);
+            bot->Relocate(spot.x, spot.y, spot.z, spot.o);
             map->Add(bot);
             m_npcBotGuids.insert(botGuid);
             m_spotToBotGuid[spot.spotId] = botGuid;
@@ -206,10 +211,33 @@ void NpcBotMgr::DespawnBotForSpot(uint32 spotId)
 void NpcBotMgr::Update(uint32 diff)
 {
     m_updateTimer += diff;
-    if (m_updateTimer < 5000) // Update every 5 seconds
+    if (m_updateTimer < 2000) // Update every 2 seconds
         return;
 
     m_updateTimer = 0;
+
+    // Check online human player zones to dynamically activate matching hubs
+    sObjectAccessor.DoForAllPlayers([this](Player* player)
+    {
+        if (!player || IsNpcBot(player) || !player->IsInWorld())
+            return;
+
+        uint32 pZone = player->GetZoneId();
+        uint32 pArea = player->GetAreaId();
+
+        for (auto& hPair : m_hubs)
+        {
+            NpcBotHub& hub = hPair.second;
+            if (pZone == hub.zoneId || (hub.areaId != 0 && pArea == hub.areaId))
+            {
+                if (!hub.isActive)
+                {
+                    ActivateHub(hub.hubId);
+                }
+            }
+        }
+    });
+
     UpdateBotBehaviors(diff);
 }
 
