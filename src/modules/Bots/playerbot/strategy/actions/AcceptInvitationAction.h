@@ -40,6 +40,11 @@ namespace ai
 
             bot->GetPlayerbotAI()->SetMaster(inviter);
 
+            if (inviter && inviter->IsInWorld())
+            {
+                bot->TeleportTo(inviter->GetMapId(), inviter->GetPositionX(), inviter->GetPositionY(), inviter->GetPositionZ(), inviter->GetOrientation());
+            }
+
             ai->ResetStrategies();
             ai->TellMaster("Hello! Ready to follow your lead.");
             return true;

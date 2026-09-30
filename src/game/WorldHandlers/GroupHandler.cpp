@@ -34,6 +34,7 @@
 #include "Group.h"
 #include "SocialMgr.h"
 #include "Util.h"
+#include "../../modules/Bots/playerbot/playerbot.h"
 
 /* differences from off:
     -you can uninvite yourself - is is useful
@@ -110,6 +111,20 @@ void WorldSession::HandleGroupInviteOpcode(WorldPacket& recv_data)
     {
         group2 = player->GetOriginalGroup();
     }
+
+    if (player->GetPlayerbotAI())
+    {
+        if (group2)
+        {
+            player->RemoveFromGroup();
+            group2 = nullptr;
+        }
+        if (player->GetGroupInvite())
+        {
+            player->UninviteFromGroup();
+        }
+    }
+
     // player already in another group or invited
     if (group2 || player->GetGroupInvite())
     {
