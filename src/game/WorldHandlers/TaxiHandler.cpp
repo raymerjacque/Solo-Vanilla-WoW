@@ -257,10 +257,13 @@ void WorldSession::HandleMoveSplineDoneOpcode(WorldPacket& recv_data)
             flight->Interrupt(*_player);                // will reset at map landing
 
             flight->SetCurrentNodeAfterTeleport();
-            TaxiPathNodeEntry const& node = flight->GetPath()[flight->GetCurrentNode()];
-            flight->SkipCurrentNode();
+            if (flight->GetCurrentNode() < flight->GetPath().size())
+            {
+                TaxiPathNodeEntry const& node = flight->GetPath()[flight->GetCurrentNode()];
+                flight->SkipCurrentNode();
 
-            _player->TeleportTo(curDestNode->map_id, node.x, node.y, node.z, _player->GetOrientation());
+                _player->TeleportTo(curDestNode->map_id, node.x, node.y, node.z, _player->GetOrientation());
+            }
         }
         return;
     }

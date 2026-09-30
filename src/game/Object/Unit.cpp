@@ -479,7 +479,7 @@ void Unit::SendHeartBeat()
     WorldPacket data(MSG_MOVE_HEARTBEAT, 31);
     data << GetPackGUID();
     data << m_movementInfo;
-    SendMessageToSet(&data, true);
+    SendMessageToSet(&data, false);
 }
 
 void Unit::resetAttackTimer(WeaponAttackType type)

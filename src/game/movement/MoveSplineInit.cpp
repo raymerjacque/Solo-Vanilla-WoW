@@ -69,12 +69,21 @@ namespace Movement
 
         if (args.path.empty())
         {
-            // should i do the things that user should do?
-            MoveTo(real_position);
+            if (!unit.hasUnitState(UNIT_STAT_TAXI_FLIGHT))
+            {
+                MoveTo(real_position);
+            }
+            else
+            {
+                return 0;
+            }
         }
 
-        // corrent first vertex
-        args.path[0] = real_position;
+        // correct first vertex
+        if (!args.path.empty() && !unit.hasUnitState(UNIT_STAT_TAXI_FLIGHT))
+        {
+            args.path[0] = real_position;
+        }
         uint32 moveFlags = unit.m_movementInfo.GetMovementFlags();
         if (args.flags.runmode)
         {
