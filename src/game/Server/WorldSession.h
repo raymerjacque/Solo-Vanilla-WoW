@@ -36,6 +36,8 @@
 #include "AuctionHouseMgr.h"
 #include "Item.h"
 
+#include "WorldHandlers/LoginQueryHolder.h"
+
 struct ItemPrototype;
 struct AuctionEntry;
 struct AuctionHouseEntry;
@@ -51,7 +53,6 @@ class Warden;
 class WorldPacket;
 class WorldSocket;
 class QueryResult;
-class LoginQueryHolder;
 class CharacterHandler;
 class GMTicket;
 class MovementInfo;

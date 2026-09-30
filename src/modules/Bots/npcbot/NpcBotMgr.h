@@ -8,7 +8,22 @@
 #include <unordered_set>
 #include <vector>
 
+#include "WorldHandlers/LoginQueryHolder.h"
+#include "WorldSession.h"
+#include "Database/DatabaseEnv.h"
+
 class Player;
+class SqlQueryHolder;
+
+class NpcBotLoginQueryHolder : public LoginQueryHolder
+{
+private:
+    uint32 m_spotId;
+public:
+    NpcBotLoginQueryHolder(uint32 spotId, uint32 accountId, ObjectGuid guid)
+        : LoginQueryHolder(accountId, guid), m_spotId(spotId) {}
+    uint32 GetSpotId() const { return m_spotId; }
+};
 
 class NpcBotMgr
 {
@@ -29,6 +44,8 @@ public:
     void ActivateHub(uint32 hubId);
     void DeactivateHub(uint32 hubId);
 
+    void HandleNpcBotLoginCallback(QueryResult* dummy, SqlQueryHolder* holder);
+
 private:
     NpcBotMgr();
     ~NpcBotMgr();
@@ -37,6 +54,8 @@ private:
     void SpawnBotForSpot(const NpcBotHub& hub, const NpcBotSpot& spot);
     void DespawnBotForSpot(uint32 spotId);
     void UpdateBotBehaviors(uint32 diff);
+    void OnNpcBotLoaded(Player* bot, const NpcBotSpot& spot);
+    const NpcBotSpot* FindSpot(uint32 spotId) const;
 
     std::unordered_map<uint32, NpcBotHub> m_hubs; // hubId -> Hub
     std::unordered_map<uint32, std::vector<uint32>> m_zoneToHubs; // zoneId -> vector of hubIds

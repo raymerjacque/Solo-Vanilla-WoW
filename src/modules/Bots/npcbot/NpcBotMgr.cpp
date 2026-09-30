@@ -1,3 +1,4 @@
+#include "WorldHandlers/LoginQueryHolder.h"
 #include "NpcBotMgr.h"
 #include "ObjectMgr.h"
 #include "Player.h"
@@ -7,6 +8,7 @@
 #include "World.h"
 #include "ObjectAccessor.h"
 #include "Database/DatabaseEnv.h"
+#include "Database/DatabaseImpl.h"
 
 NpcBotMgr::NpcBotMgr() : m_updateTimer(0)
 {
@@ -141,54 +143,117 @@ void NpcBotMgr::DeactivateHub(uint32 hubId)
     }
 }
 
+const NpcBotSpot* NpcBotMgr::FindSpot(uint32 spotId) const
+{
+    for (const auto& hPair : m_hubs)
+    {
+        for (const auto& spot : hPair.second.spots)
+        {
+            if (spot.spotId == spotId)
+                return &spot;
+        }
+    }
+    return nullptr;
+}
+
 void NpcBotMgr::SpawnBotForSpot(const NpcBotHub& hub, const NpcBotSpot& spot)
 {
-    // Query available character guid from database
-    QueryResult* result = CharacterDatabase.PQuery("SELECT guid FROM characters LIMIT 1 OFFSET %u", (spot.spotId * 7) % 250);
+    // Query available character guid and account from database
+    QueryResult* result = CharacterDatabase.PQuery("SELECT guid, account FROM characters LIMIT 1 OFFSET %u", (spot.spotId * 7) % 250);
     if (!result)
     {
-        result = CharacterDatabase.Query("SELECT guid FROM characters LIMIT 1");
+        result = CharacterDatabase.Query("SELECT guid, account FROM characters LIMIT 1");
         if (!result)
             return;
     }
 
     Field* fields = result->Fetch();
     uint32 lowguid = fields[0].GetUInt32();
+    uint32 accountId = fields[1].GetUInt32();
     delete result;
 
     ObjectGuid botGuid(HIGHGUID_PLAYER, lowguid);
-    Player* bot = sObjectMgr.GetPlayer(botGuid, true);
-    if (!bot)
+
+    // If bot is already online in world
+    Player* bot = sObjectMgr.GetPlayer(botGuid);
+    if (bot && bot->IsInWorld())
+    {
+        OnNpcBotLoaded(bot, spot);
+        return;
+    }
+
+    // Otherwise, load character asynchronously from DB using NpcBotLoginQueryHolder
+    NpcBotLoginQueryHolder* holder = new NpcBotLoginQueryHolder(spot.spotId, accountId, botGuid);
+    if (!holder->Initialize())
+    {
+        delete holder;
+        return;
+    }
+
+    CharacterDatabase.DelayQueryHolder(this, &NpcBotMgr::HandleNpcBotLoginCallback, holder);
+}
+
+void NpcBotMgr::HandleNpcBotLoginCallback(QueryResult* /*dummy*/, SqlQueryHolder* holder)
+{
+    NpcBotLoginQueryHolder* nqh = static_cast<NpcBotLoginQueryHolder*>(holder);
+    if (!nqh)
         return;
 
-    if (!bot->GetSession())
+    uint32 spotId = nqh->GetSpotId();
+    uint32 accountId = nqh->GetAccountId();
+    ObjectGuid botGuid = nqh->GetGuid();
+
+    if (sObjectMgr.GetPlayer(botGuid))
     {
-        uint32 accountId = sObjectMgr.GetPlayerAccountIdByGUID(botGuid);
-        WorldSession* session = new WorldSession(accountId, NULL, SEC_PLAYER, 0, LOCALE_enUS);
-        bot->SetSession(session);
+        delete nqh;
+        return;
     }
 
-    if (!bot->IsInWorld())
-    {
-        Map* map = sMapMgr.FindMap(spot.mapId, 0);
-        if (map)
-        {
-            bot->SetMap(map);
-            bot->Relocate(spot.x, spot.y, spot.z, spot.o);
-            map->Add(bot);
-            m_npcBotGuids.insert(botGuid);
-            m_spotToBotGuid[spot.spotId] = botGuid;
+    WorldSession* botSession = new WorldSession(accountId, NULL, SEC_PLAYER, 0, LOCALE_enUS);
+    botSession->HandlePlayerLogin(nqh); // HandlePlayerLogin deletes nqh!
 
-            if (spot.behavior == NPCBOT_BEHAVIOR_SIT)
-            {
-                bot->SetStandState(UNIT_STAND_STATE_SIT);
-            }
-            else
-            {
-                bot->SetStandState(UNIT_STAND_STATE_STAND);
-            }
-        }
+    Player* bot = botSession->GetPlayer();
+    if (!bot || !bot->IsInWorld())
+    {
+        return;
     }
+
+    const NpcBotSpot* pSpot = FindSpot(spotId);
+    if (pSpot)
+    {
+        OnNpcBotLoaded(bot, *pSpot);
+    }
+}
+
+void NpcBotMgr::OnNpcBotLoaded(Player* bot, const NpcBotSpot& spot)
+{
+    if (!bot || !bot->IsInWorld())
+        return;
+
+    if (bot->GetMapId() == spot.mapId)
+    {
+        bot->GetMap()->Remove(bot, false);
+        bot->Relocate(spot.x, spot.y, spot.z, spot.o);
+        bot->GetMap()->Add(bot);
+    }
+    else
+    {
+        bot->TeleportTo(spot.mapId, spot.x, spot.y, spot.z, spot.o);
+    }
+
+    if (spot.behavior == NPCBOT_BEHAVIOR_SIT)
+    {
+        bot->SetStandState(UNIT_STAND_STATE_SIT);
+    }
+    else
+    {
+        bot->SetStandState(UNIT_STAND_STATE_STAND);
+    }
+
+    m_npcBotGuids.insert(bot->GetObjectGuid());
+    m_spotToBotGuid[spot.spotId] = bot->GetObjectGuid();
+
+    sLog.outString("NPCBot '%s' (GUID: %u) loaded successfully at spot %u (%s)", bot->GetName(), bot->GetGUIDLow(), spot.spotId, spot.name.c_str());
 }
 
 void NpcBotMgr::DespawnBotForSpot(uint32 spotId)
@@ -201,15 +266,46 @@ void NpcBotMgr::DespawnBotForSpot(uint32 spotId)
     Player* bot = sObjectMgr.GetPlayer(botGuid);
     if (bot && bot->IsInWorld())
     {
-        bot->GetMap()->Remove(bot, false);
+        WorldSession* session = bot->GetSession();
+        m_npcBotGuids.erase(botGuid);
+        m_spotToBotGuid.erase(sIt);
+        if (session)
+        {
+            session->LogoutPlayer(true);
+            delete session;
+        }
     }
-
-    m_npcBotGuids.erase(botGuid);
-    m_spotToBotGuid.erase(sIt);
+    else
+    {
+        m_npcBotGuids.erase(botGuid);
+        m_spotToBotGuid.erase(sIt);
+    }
 }
 
 void NpcBotMgr::Update(uint32 diff)
 {
+    // Process bot teleport acks
+    for (ObjectGuid guid : m_npcBotGuids)
+    {
+        Player* bot = sObjectMgr.GetPlayer(guid);
+        if (bot && bot->IsBeingTeleported())
+        {
+            bot->GetMotionMaster()->Clear(true);
+            if (bot->IsBeingTeleportedNear())
+            {
+                WorldPacket p = WorldPacket(MSG_MOVE_TELEPORT_ACK, 8 + 4 + 4);
+                p << bot->GetObjectGuid();
+                p << (uint32)0;
+                p << (uint32)time(0);
+                bot->GetSession()->HandleMoveTeleportAckOpcode(p);
+            }
+            else if (bot->IsBeingTeleportedFar())
+            {
+                bot->GetSession()->HandleMoveWorldportAckOpcode();
+            }
+        }
+    }
+
     m_updateTimer += diff;
     if (m_updateTimer < 2000) // Update every 2 seconds
         return;
@@ -249,8 +345,39 @@ void NpcBotMgr::UpdateBotBehaviors(uint32 diff)
         if (!bot || !bot->IsInWorld())
             continue;
 
+        // Maintain sit state for SIT behavior bots or combat emotes for DUEL bots
+        for (const auto& sPair : m_spotToBotGuid)
+        {
+            if (sPair.second == guid)
+            {
+                const NpcBotSpot* pSpot = FindSpot(sPair.first);
+                if (pSpot && pSpot->behavior == NPCBOT_BEHAVIOR_SIT)
+                {
+                    if (bot->getStandState() != UNIT_STAND_STATE_SIT)
+                        bot->SetStandState(UNIT_STAND_STATE_SIT);
+                }
+                else if (pSpot && pSpot->behavior == NPCBOT_BEHAVIOR_DUEL)
+                {
+                    if (urand(0, 100) < 25)
+                    {
+                        uint32 combatEmote = EMOTE_ONESHOT_ATTACK1H;
+                        switch (urand(0, 4))
+                        {
+                            case 0: combatEmote = EMOTE_ONESHOT_ATTACK1H; break;
+                            case 1: combatEmote = EMOTE_ONESHOT_PARRYUNARMED; break;
+                            case 2: combatEmote = EMOTE_ONESHOT_SPELLCAST; break;
+                            case 3: combatEmote = EMOTE_ONESHOT_BATTLEROAR; break;
+                            case 4: combatEmote = EMOTE_ONESHOT_SPECIALATTACK1H; break;
+                        }
+                        bot->HandleEmoteCommand(combatEmote);
+                    }
+                }
+                break;
+            }
+        }
+
         // Occasional ambient social emote
-        if (urand(0, 100) < 15)
+        if (urand(0, 100) < 10)
         {
             uint32 emote = EMOTE_ONESHOT_WAVE;
             switch (urand(0, 5))
